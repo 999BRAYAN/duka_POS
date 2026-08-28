@@ -43,10 +43,10 @@ const _singleManagerIndexSql =
     Expenses,
   ],
 )
-class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+class DukaDatabase extends _$DukaDatabase {
+  DukaDatabase() : super(_openConnection());
 
-  AppDatabase.forTesting(super.executor);
+  DukaDatabase.forTesting(super.executor);
 
   @override
   int get schemaVersion => 1;

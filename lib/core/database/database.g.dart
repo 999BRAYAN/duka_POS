@@ -7302,9 +7302,9 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   }
 }
 
-abstract class _$AppDatabase extends GeneratedDatabase {
-  _$AppDatabase(QueryExecutor e) : super(e);
-  $AppDatabaseManager get managers => $AppDatabaseManager(this);
+abstract class _$DukaDatabase extends GeneratedDatabase {
+  _$DukaDatabase(QueryExecutor e) : super(e);
+  $DukaDatabaseManager get managers => $DukaDatabaseManager(this);
   late final $UsersTable users = $UsersTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $ProductsTable products = $ProductsTable(this);
@@ -7363,7 +7363,7 @@ typedef $$UsersTableUpdateCompanionBuilder =
       Value<DateTime?> updatedAt,
     });
 
-class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
+class $$UsersTableFilterComposer extends Composer<_$DukaDatabase, $UsersTable> {
   $$UsersTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -7418,7 +7418,7 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 }
 
 class $$UsersTableOrderingComposer
-    extends Composer<_$AppDatabase, $UsersTable> {
+    extends Composer<_$DukaDatabase, $UsersTable> {
   $$UsersTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -7473,7 +7473,7 @@ class $$UsersTableOrderingComposer
 }
 
 class $$UsersTableAnnotationComposer
-    extends Composer<_$AppDatabase, $UsersTable> {
+    extends Composer<_$DukaDatabase, $UsersTable> {
   $$UsersTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -7514,7 +7514,7 @@ class $$UsersTableAnnotationComposer
 class $$UsersTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $UsersTable,
           User,
           $$UsersTableFilterComposer,
@@ -7522,11 +7522,11 @@ class $$UsersTableTableManager
           $$UsersTableAnnotationComposer,
           $$UsersTableCreateCompanionBuilder,
           $$UsersTableUpdateCompanionBuilder,
-          (User, BaseReferences<_$AppDatabase, $UsersTable, User>),
+          (User, BaseReferences<_$DukaDatabase, $UsersTable, User>),
           User,
           PrefetchHooks Function()
         > {
-  $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
+  $$UsersTableTableManager(_$DukaDatabase db, $UsersTable table)
     : super(
         TableManagerState(
           db: db,
@@ -7591,7 +7591,7 @@ class $$UsersTableTableManager
 
 typedef $$UsersTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $UsersTable,
       User,
       $$UsersTableFilterComposer,
@@ -7599,7 +7599,7 @@ typedef $$UsersTableProcessedTableManager =
       $$UsersTableAnnotationComposer,
       $$UsersTableCreateCompanionBuilder,
       $$UsersTableUpdateCompanionBuilder,
-      (User, BaseReferences<_$AppDatabase, $UsersTable, User>),
+      (User, BaseReferences<_$DukaDatabase, $UsersTable, User>),
       User,
       PrefetchHooks Function()
     >;
@@ -7623,7 +7623,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
     });
 
 class $$CategoriesTableFilterComposer
-    extends Composer<_$AppDatabase, $CategoriesTable> {
+    extends Composer<_$DukaDatabase, $CategoriesTable> {
   $$CategoriesTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -7663,7 +7663,7 @@ class $$CategoriesTableFilterComposer
 }
 
 class $$CategoriesTableOrderingComposer
-    extends Composer<_$AppDatabase, $CategoriesTable> {
+    extends Composer<_$DukaDatabase, $CategoriesTable> {
   $$CategoriesTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -7703,7 +7703,7 @@ class $$CategoriesTableOrderingComposer
 }
 
 class $$CategoriesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $CategoriesTable> {
+    extends Composer<_$DukaDatabase, $CategoriesTable> {
   $$CategoriesTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -7735,7 +7735,7 @@ class $$CategoriesTableAnnotationComposer
 class $$CategoriesTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $CategoriesTable,
           Category,
           $$CategoriesTableFilterComposer,
@@ -7743,11 +7743,14 @@ class $$CategoriesTableTableManager
           $$CategoriesTableAnnotationComposer,
           $$CategoriesTableCreateCompanionBuilder,
           $$CategoriesTableUpdateCompanionBuilder,
-          (Category, BaseReferences<_$AppDatabase, $CategoriesTable, Category>),
+          (
+            Category,
+            BaseReferences<_$DukaDatabase, $CategoriesTable, Category>,
+          ),
           Category,
           PrefetchHooks Function()
         > {
-  $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
+  $$CategoriesTableTableManager(_$DukaDatabase db, $CategoriesTable table)
     : super(
         TableManagerState(
           db: db,
@@ -7800,7 +7803,7 @@ class $$CategoriesTableTableManager
 
 typedef $$CategoriesTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $CategoriesTable,
       Category,
       $$CategoriesTableFilterComposer,
@@ -7808,7 +7811,7 @@ typedef $$CategoriesTableProcessedTableManager =
       $$CategoriesTableAnnotationComposer,
       $$CategoriesTableCreateCompanionBuilder,
       $$CategoriesTableUpdateCompanionBuilder,
-      (Category, BaseReferences<_$AppDatabase, $CategoriesTable, Category>),
+      (Category, BaseReferences<_$DukaDatabase, $CategoriesTable, Category>),
       Category,
       PrefetchHooks Function()
     >;
@@ -7852,7 +7855,7 @@ typedef $$ProductsTableUpdateCompanionBuilder =
     });
 
 class $$ProductsTableFilterComposer
-    extends Composer<_$AppDatabase, $ProductsTable> {
+    extends Composer<_$DukaDatabase, $ProductsTable> {
   $$ProductsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -7942,7 +7945,7 @@ class $$ProductsTableFilterComposer
 }
 
 class $$ProductsTableOrderingComposer
-    extends Composer<_$AppDatabase, $ProductsTable> {
+    extends Composer<_$DukaDatabase, $ProductsTable> {
   $$ProductsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -8032,7 +8035,7 @@ class $$ProductsTableOrderingComposer
 }
 
 class $$ProductsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ProductsTable> {
+    extends Composer<_$DukaDatabase, $ProductsTable> {
   $$ProductsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -8102,7 +8105,7 @@ class $$ProductsTableAnnotationComposer
 class $$ProductsTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $ProductsTable,
           Product,
           $$ProductsTableFilterComposer,
@@ -8110,11 +8113,11 @@ class $$ProductsTableTableManager
           $$ProductsTableAnnotationComposer,
           $$ProductsTableCreateCompanionBuilder,
           $$ProductsTableUpdateCompanionBuilder,
-          (Product, BaseReferences<_$AppDatabase, $ProductsTable, Product>),
+          (Product, BaseReferences<_$DukaDatabase, $ProductsTable, Product>),
           Product,
           PrefetchHooks Function()
         > {
-  $$ProductsTableTableManager(_$AppDatabase db, $ProductsTable table)
+  $$ProductsTableTableManager(_$DukaDatabase db, $ProductsTable table)
     : super(
         TableManagerState(
           db: db,
@@ -8207,7 +8210,7 @@ class $$ProductsTableTableManager
 
 typedef $$ProductsTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $ProductsTable,
       Product,
       $$ProductsTableFilterComposer,
@@ -8215,7 +8218,7 @@ typedef $$ProductsTableProcessedTableManager =
       $$ProductsTableAnnotationComposer,
       $$ProductsTableCreateCompanionBuilder,
       $$ProductsTableUpdateCompanionBuilder,
-      (Product, BaseReferences<_$AppDatabase, $ProductsTable, Product>),
+      (Product, BaseReferences<_$DukaDatabase, $ProductsTable, Product>),
       Product,
       PrefetchHooks Function()
     >;
@@ -8247,7 +8250,7 @@ typedef $$CustomersTableUpdateCompanionBuilder =
     });
 
 class $$CustomersTableFilterComposer
-    extends Composer<_$AppDatabase, $CustomersTable> {
+    extends Composer<_$DukaDatabase, $CustomersTable> {
   $$CustomersTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -8307,7 +8310,7 @@ class $$CustomersTableFilterComposer
 }
 
 class $$CustomersTableOrderingComposer
-    extends Composer<_$AppDatabase, $CustomersTable> {
+    extends Composer<_$DukaDatabase, $CustomersTable> {
   $$CustomersTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -8367,7 +8370,7 @@ class $$CustomersTableOrderingComposer
 }
 
 class $$CustomersTableAnnotationComposer
-    extends Composer<_$AppDatabase, $CustomersTable> {
+    extends Composer<_$DukaDatabase, $CustomersTable> {
   $$CustomersTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -8413,7 +8416,7 @@ class $$CustomersTableAnnotationComposer
 class $$CustomersTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $CustomersTable,
           Customer,
           $$CustomersTableFilterComposer,
@@ -8421,11 +8424,11 @@ class $$CustomersTableTableManager
           $$CustomersTableAnnotationComposer,
           $$CustomersTableCreateCompanionBuilder,
           $$CustomersTableUpdateCompanionBuilder,
-          (Customer, BaseReferences<_$AppDatabase, $CustomersTable, Customer>),
+          (Customer, BaseReferences<_$DukaDatabase, $CustomersTable, Customer>),
           Customer,
           PrefetchHooks Function()
         > {
-  $$CustomersTableTableManager(_$AppDatabase db, $CustomersTable table)
+  $$CustomersTableTableManager(_$DukaDatabase db, $CustomersTable table)
     : super(
         TableManagerState(
           db: db,
@@ -8494,7 +8497,7 @@ class $$CustomersTableTableManager
 
 typedef $$CustomersTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $CustomersTable,
       Customer,
       $$CustomersTableFilterComposer,
@@ -8502,7 +8505,7 @@ typedef $$CustomersTableProcessedTableManager =
       $$CustomersTableAnnotationComposer,
       $$CustomersTableCreateCompanionBuilder,
       $$CustomersTableUpdateCompanionBuilder,
-      (Customer, BaseReferences<_$AppDatabase, $CustomersTable, Customer>),
+      (Customer, BaseReferences<_$DukaDatabase, $CustomersTable, Customer>),
       Customer,
       PrefetchHooks Function()
     >;
@@ -8530,7 +8533,7 @@ typedef $$SuppliersTableUpdateCompanionBuilder =
     });
 
 class $$SuppliersTableFilterComposer
-    extends Composer<_$AppDatabase, $SuppliersTable> {
+    extends Composer<_$DukaDatabase, $SuppliersTable> {
   $$SuppliersTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -8580,7 +8583,7 @@ class $$SuppliersTableFilterComposer
 }
 
 class $$SuppliersTableOrderingComposer
-    extends Composer<_$AppDatabase, $SuppliersTable> {
+    extends Composer<_$DukaDatabase, $SuppliersTable> {
   $$SuppliersTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -8630,7 +8633,7 @@ class $$SuppliersTableOrderingComposer
 }
 
 class $$SuppliersTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SuppliersTable> {
+    extends Composer<_$DukaDatabase, $SuppliersTable> {
   $$SuppliersTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -8666,7 +8669,7 @@ class $$SuppliersTableAnnotationComposer
 class $$SuppliersTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $SuppliersTable,
           Supplier,
           $$SuppliersTableFilterComposer,
@@ -8674,11 +8677,11 @@ class $$SuppliersTableTableManager
           $$SuppliersTableAnnotationComposer,
           $$SuppliersTableCreateCompanionBuilder,
           $$SuppliersTableUpdateCompanionBuilder,
-          (Supplier, BaseReferences<_$AppDatabase, $SuppliersTable, Supplier>),
+          (Supplier, BaseReferences<_$DukaDatabase, $SuppliersTable, Supplier>),
           Supplier,
           PrefetchHooks Function()
         > {
-  $$SuppliersTableTableManager(_$AppDatabase db, $SuppliersTable table)
+  $$SuppliersTableTableManager(_$DukaDatabase db, $SuppliersTable table)
     : super(
         TableManagerState(
           db: db,
@@ -8739,7 +8742,7 @@ class $$SuppliersTableTableManager
 
 typedef $$SuppliersTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $SuppliersTable,
       Supplier,
       $$SuppliersTableFilterComposer,
@@ -8747,7 +8750,7 @@ typedef $$SuppliersTableProcessedTableManager =
       $$SuppliersTableAnnotationComposer,
       $$SuppliersTableCreateCompanionBuilder,
       $$SuppliersTableUpdateCompanionBuilder,
-      (Supplier, BaseReferences<_$AppDatabase, $SuppliersTable, Supplier>),
+      (Supplier, BaseReferences<_$DukaDatabase, $SuppliersTable, Supplier>),
       Supplier,
       PrefetchHooks Function()
     >;
@@ -8779,7 +8782,7 @@ typedef $$StockMovementsTableUpdateCompanionBuilder =
     });
 
 class $$StockMovementsTableFilterComposer
-    extends Composer<_$AppDatabase, $StockMovementsTable> {
+    extends Composer<_$DukaDatabase, $StockMovementsTable> {
   $$StockMovementsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -8839,7 +8842,7 @@ class $$StockMovementsTableFilterComposer
 }
 
 class $$StockMovementsTableOrderingComposer
-    extends Composer<_$AppDatabase, $StockMovementsTable> {
+    extends Composer<_$DukaDatabase, $StockMovementsTable> {
   $$StockMovementsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -8899,7 +8902,7 @@ class $$StockMovementsTableOrderingComposer
 }
 
 class $$StockMovementsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $StockMovementsTable> {
+    extends Composer<_$DukaDatabase, $StockMovementsTable> {
   $$StockMovementsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -8941,7 +8944,7 @@ class $$StockMovementsTableAnnotationComposer
 class $$StockMovementsTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $StockMovementsTable,
           StockMovement,
           $$StockMovementsTableFilterComposer,
@@ -8951,13 +8954,13 @@ class $$StockMovementsTableTableManager
           $$StockMovementsTableUpdateCompanionBuilder,
           (
             StockMovement,
-            BaseReferences<_$AppDatabase, $StockMovementsTable, StockMovement>,
+            BaseReferences<_$DukaDatabase, $StockMovementsTable, StockMovement>,
           ),
           StockMovement,
           PrefetchHooks Function()
         > {
   $$StockMovementsTableTableManager(
-    _$AppDatabase db,
+    _$DukaDatabase db,
     $StockMovementsTable table,
   ) : super(
         TableManagerState(
@@ -9027,7 +9030,7 @@ class $$StockMovementsTableTableManager
 
 typedef $$StockMovementsTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $StockMovementsTable,
       StockMovement,
       $$StockMovementsTableFilterComposer,
@@ -9037,7 +9040,7 @@ typedef $$StockMovementsTableProcessedTableManager =
       $$StockMovementsTableUpdateCompanionBuilder,
       (
         StockMovement,
-        BaseReferences<_$AppDatabase, $StockMovementsTable, StockMovement>,
+        BaseReferences<_$DukaDatabase, $StockMovementsTable, StockMovement>,
       ),
       StockMovement,
       PrefetchHooks Function()
@@ -9077,7 +9080,7 @@ typedef $$SalesTableUpdateCompanionBuilder =
       Value<DateTime?> updatedAt,
     });
 
-class $$SalesTableFilterComposer extends Composer<_$AppDatabase, $SalesTable> {
+class $$SalesTableFilterComposer extends Composer<_$DukaDatabase, $SalesTable> {
   $$SalesTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -9157,7 +9160,7 @@ class $$SalesTableFilterComposer extends Composer<_$AppDatabase, $SalesTable> {
 }
 
 class $$SalesTableOrderingComposer
-    extends Composer<_$AppDatabase, $SalesTable> {
+    extends Composer<_$DukaDatabase, $SalesTable> {
   $$SalesTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -9237,7 +9240,7 @@ class $$SalesTableOrderingComposer
 }
 
 class $$SalesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SalesTable> {
+    extends Composer<_$DukaDatabase, $SalesTable> {
   $$SalesTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -9299,7 +9302,7 @@ class $$SalesTableAnnotationComposer
 class $$SalesTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $SalesTable,
           Sale,
           $$SalesTableFilterComposer,
@@ -9307,11 +9310,11 @@ class $$SalesTableTableManager
           $$SalesTableAnnotationComposer,
           $$SalesTableCreateCompanionBuilder,
           $$SalesTableUpdateCompanionBuilder,
-          (Sale, BaseReferences<_$AppDatabase, $SalesTable, Sale>),
+          (Sale, BaseReferences<_$DukaDatabase, $SalesTable, Sale>),
           Sale,
           PrefetchHooks Function()
         > {
-  $$SalesTableTableManager(_$AppDatabase db, $SalesTable table)
+  $$SalesTableTableManager(_$DukaDatabase db, $SalesTable table)
     : super(
         TableManagerState(
           db: db,
@@ -9396,7 +9399,7 @@ class $$SalesTableTableManager
 
 typedef $$SalesTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $SalesTable,
       Sale,
       $$SalesTableFilterComposer,
@@ -9404,7 +9407,7 @@ typedef $$SalesTableProcessedTableManager =
       $$SalesTableAnnotationComposer,
       $$SalesTableCreateCompanionBuilder,
       $$SalesTableUpdateCompanionBuilder,
-      (Sale, BaseReferences<_$AppDatabase, $SalesTable, Sale>),
+      (Sale, BaseReferences<_$DukaDatabase, $SalesTable, Sale>),
       Sale,
       PrefetchHooks Function()
     >;
@@ -9436,7 +9439,7 @@ typedef $$SaleItemsTableUpdateCompanionBuilder =
     });
 
 class $$SaleItemsTableFilterComposer
-    extends Composer<_$AppDatabase, $SaleItemsTable> {
+    extends Composer<_$DukaDatabase, $SaleItemsTable> {
   $$SaleItemsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -9496,7 +9499,7 @@ class $$SaleItemsTableFilterComposer
 }
 
 class $$SaleItemsTableOrderingComposer
-    extends Composer<_$AppDatabase, $SaleItemsTable> {
+    extends Composer<_$DukaDatabase, $SaleItemsTable> {
   $$SaleItemsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -9556,7 +9559,7 @@ class $$SaleItemsTableOrderingComposer
 }
 
 class $$SaleItemsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SaleItemsTable> {
+    extends Composer<_$DukaDatabase, $SaleItemsTable> {
   $$SaleItemsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -9598,7 +9601,7 @@ class $$SaleItemsTableAnnotationComposer
 class $$SaleItemsTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $SaleItemsTable,
           SaleItem,
           $$SaleItemsTableFilterComposer,
@@ -9606,11 +9609,11 @@ class $$SaleItemsTableTableManager
           $$SaleItemsTableAnnotationComposer,
           $$SaleItemsTableCreateCompanionBuilder,
           $$SaleItemsTableUpdateCompanionBuilder,
-          (SaleItem, BaseReferences<_$AppDatabase, $SaleItemsTable, SaleItem>),
+          (SaleItem, BaseReferences<_$DukaDatabase, $SaleItemsTable, SaleItem>),
           SaleItem,
           PrefetchHooks Function()
         > {
-  $$SaleItemsTableTableManager(_$AppDatabase db, $SaleItemsTable table)
+  $$SaleItemsTableTableManager(_$DukaDatabase db, $SaleItemsTable table)
     : super(
         TableManagerState(
           db: db,
@@ -9679,7 +9682,7 @@ class $$SaleItemsTableTableManager
 
 typedef $$SaleItemsTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $SaleItemsTable,
       SaleItem,
       $$SaleItemsTableFilterComposer,
@@ -9687,7 +9690,7 @@ typedef $$SaleItemsTableProcessedTableManager =
       $$SaleItemsTableAnnotationComposer,
       $$SaleItemsTableCreateCompanionBuilder,
       $$SaleItemsTableUpdateCompanionBuilder,
-      (SaleItem, BaseReferences<_$AppDatabase, $SaleItemsTable, SaleItem>),
+      (SaleItem, BaseReferences<_$DukaDatabase, $SaleItemsTable, SaleItem>),
       SaleItem,
       PrefetchHooks Function()
     >;
@@ -9725,7 +9728,7 @@ typedef $$PurchasesTableUpdateCompanionBuilder =
     });
 
 class $$PurchasesTableFilterComposer
-    extends Composer<_$AppDatabase, $PurchasesTable> {
+    extends Composer<_$DukaDatabase, $PurchasesTable> {
   $$PurchasesTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -9800,7 +9803,7 @@ class $$PurchasesTableFilterComposer
 }
 
 class $$PurchasesTableOrderingComposer
-    extends Composer<_$AppDatabase, $PurchasesTable> {
+    extends Composer<_$DukaDatabase, $PurchasesTable> {
   $$PurchasesTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -9875,7 +9878,7 @@ class $$PurchasesTableOrderingComposer
 }
 
 class $$PurchasesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $PurchasesTable> {
+    extends Composer<_$DukaDatabase, $PurchasesTable> {
   $$PurchasesTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -9932,7 +9935,7 @@ class $$PurchasesTableAnnotationComposer
 class $$PurchasesTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $PurchasesTable,
           Purchase,
           $$PurchasesTableFilterComposer,
@@ -9940,11 +9943,11 @@ class $$PurchasesTableTableManager
           $$PurchasesTableAnnotationComposer,
           $$PurchasesTableCreateCompanionBuilder,
           $$PurchasesTableUpdateCompanionBuilder,
-          (Purchase, BaseReferences<_$AppDatabase, $PurchasesTable, Purchase>),
+          (Purchase, BaseReferences<_$DukaDatabase, $PurchasesTable, Purchase>),
           Purchase,
           PrefetchHooks Function()
         > {
-  $$PurchasesTableTableManager(_$AppDatabase db, $PurchasesTable table)
+  $$PurchasesTableTableManager(_$DukaDatabase db, $PurchasesTable table)
     : super(
         TableManagerState(
           db: db,
@@ -10025,7 +10028,7 @@ class $$PurchasesTableTableManager
 
 typedef $$PurchasesTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $PurchasesTable,
       Purchase,
       $$PurchasesTableFilterComposer,
@@ -10033,7 +10036,7 @@ typedef $$PurchasesTableProcessedTableManager =
       $$PurchasesTableAnnotationComposer,
       $$PurchasesTableCreateCompanionBuilder,
       $$PurchasesTableUpdateCompanionBuilder,
-      (Purchase, BaseReferences<_$AppDatabase, $PurchasesTable, Purchase>),
+      (Purchase, BaseReferences<_$DukaDatabase, $PurchasesTable, Purchase>),
       Purchase,
       PrefetchHooks Function()
     >;
@@ -10063,7 +10066,7 @@ typedef $$PurchaseItemsTableUpdateCompanionBuilder =
     });
 
 class $$PurchaseItemsTableFilterComposer
-    extends Composer<_$AppDatabase, $PurchaseItemsTable> {
+    extends Composer<_$DukaDatabase, $PurchaseItemsTable> {
   $$PurchaseItemsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -10118,7 +10121,7 @@ class $$PurchaseItemsTableFilterComposer
 }
 
 class $$PurchaseItemsTableOrderingComposer
-    extends Composer<_$AppDatabase, $PurchaseItemsTable> {
+    extends Composer<_$DukaDatabase, $PurchaseItemsTable> {
   $$PurchaseItemsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -10173,7 +10176,7 @@ class $$PurchaseItemsTableOrderingComposer
 }
 
 class $$PurchaseItemsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $PurchaseItemsTable> {
+    extends Composer<_$DukaDatabase, $PurchaseItemsTable> {
   $$PurchaseItemsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -10214,7 +10217,7 @@ class $$PurchaseItemsTableAnnotationComposer
 class $$PurchaseItemsTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $PurchaseItemsTable,
           PurchaseItem,
           $$PurchaseItemsTableFilterComposer,
@@ -10224,12 +10227,12 @@ class $$PurchaseItemsTableTableManager
           $$PurchaseItemsTableUpdateCompanionBuilder,
           (
             PurchaseItem,
-            BaseReferences<_$AppDatabase, $PurchaseItemsTable, PurchaseItem>,
+            BaseReferences<_$DukaDatabase, $PurchaseItemsTable, PurchaseItem>,
           ),
           PurchaseItem,
           PrefetchHooks Function()
         > {
-  $$PurchaseItemsTableTableManager(_$AppDatabase db, $PurchaseItemsTable table)
+  $$PurchaseItemsTableTableManager(_$DukaDatabase db, $PurchaseItemsTable table)
     : super(
         TableManagerState(
           db: db,
@@ -10294,7 +10297,7 @@ class $$PurchaseItemsTableTableManager
 
 typedef $$PurchaseItemsTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $PurchaseItemsTable,
       PurchaseItem,
       $$PurchaseItemsTableFilterComposer,
@@ -10304,7 +10307,7 @@ typedef $$PurchaseItemsTableProcessedTableManager =
       $$PurchaseItemsTableUpdateCompanionBuilder,
       (
         PurchaseItem,
-        BaseReferences<_$AppDatabase, $PurchaseItemsTable, PurchaseItem>,
+        BaseReferences<_$DukaDatabase, $PurchaseItemsTable, PurchaseItem>,
       ),
       PurchaseItem,
       PrefetchHooks Function()
@@ -10337,7 +10340,7 @@ typedef $$CreditTransactionsTableUpdateCompanionBuilder =
     });
 
 class $$CreditTransactionsTableFilterComposer
-    extends Composer<_$AppDatabase, $CreditTransactionsTable> {
+    extends Composer<_$DukaDatabase, $CreditTransactionsTable> {
   $$CreditTransactionsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -10397,7 +10400,7 @@ class $$CreditTransactionsTableFilterComposer
 }
 
 class $$CreditTransactionsTableOrderingComposer
-    extends Composer<_$AppDatabase, $CreditTransactionsTable> {
+    extends Composer<_$DukaDatabase, $CreditTransactionsTable> {
   $$CreditTransactionsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -10457,7 +10460,7 @@ class $$CreditTransactionsTableOrderingComposer
 }
 
 class $$CreditTransactionsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $CreditTransactionsTable> {
+    extends Composer<_$DukaDatabase, $CreditTransactionsTable> {
   $$CreditTransactionsTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -10503,7 +10506,7 @@ class $$CreditTransactionsTableAnnotationComposer
 class $$CreditTransactionsTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $CreditTransactionsTable,
           CreditTransaction,
           $$CreditTransactionsTableFilterComposer,
@@ -10514,7 +10517,7 @@ class $$CreditTransactionsTableTableManager
           (
             CreditTransaction,
             BaseReferences<
-              _$AppDatabase,
+              _$DukaDatabase,
               $CreditTransactionsTable,
               CreditTransaction
             >,
@@ -10523,7 +10526,7 @@ class $$CreditTransactionsTableTableManager
           PrefetchHooks Function()
         > {
   $$CreditTransactionsTableTableManager(
-    _$AppDatabase db,
+    _$DukaDatabase db,
     $CreditTransactionsTable table,
   ) : super(
         TableManagerState(
@@ -10596,7 +10599,7 @@ class $$CreditTransactionsTableTableManager
 
 typedef $$CreditTransactionsTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $CreditTransactionsTable,
       CreditTransaction,
       $$CreditTransactionsTableFilterComposer,
@@ -10607,7 +10610,7 @@ typedef $$CreditTransactionsTableProcessedTableManager =
       (
         CreditTransaction,
         BaseReferences<
-          _$AppDatabase,
+          _$DukaDatabase,
           $CreditTransactionsTable,
           CreditTransaction
         >,
@@ -10639,7 +10642,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
     });
 
 class $$ExpensesTableFilterComposer
-    extends Composer<_$AppDatabase, $ExpensesTable> {
+    extends Composer<_$DukaDatabase, $ExpensesTable> {
   $$ExpensesTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -10689,7 +10692,7 @@ class $$ExpensesTableFilterComposer
 }
 
 class $$ExpensesTableOrderingComposer
-    extends Composer<_$AppDatabase, $ExpensesTable> {
+    extends Composer<_$DukaDatabase, $ExpensesTable> {
   $$ExpensesTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -10739,7 +10742,7 @@ class $$ExpensesTableOrderingComposer
 }
 
 class $$ExpensesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ExpensesTable> {
+    extends Composer<_$DukaDatabase, $ExpensesTable> {
   $$ExpensesTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -10777,7 +10780,7 @@ class $$ExpensesTableAnnotationComposer
 class $$ExpensesTableTableManager
     extends
         RootTableManager<
-          _$AppDatabase,
+          _$DukaDatabase,
           $ExpensesTable,
           Expense,
           $$ExpensesTableFilterComposer,
@@ -10785,11 +10788,11 @@ class $$ExpensesTableTableManager
           $$ExpensesTableAnnotationComposer,
           $$ExpensesTableCreateCompanionBuilder,
           $$ExpensesTableUpdateCompanionBuilder,
-          (Expense, BaseReferences<_$AppDatabase, $ExpensesTable, Expense>),
+          (Expense, BaseReferences<_$DukaDatabase, $ExpensesTable, Expense>),
           Expense,
           PrefetchHooks Function()
         > {
-  $$ExpensesTableTableManager(_$AppDatabase db, $ExpensesTable table)
+  $$ExpensesTableTableManager(_$DukaDatabase db, $ExpensesTable table)
     : super(
         TableManagerState(
           db: db,
@@ -10850,7 +10853,7 @@ class $$ExpensesTableTableManager
 
 typedef $$ExpensesTableProcessedTableManager =
     ProcessedTableManager<
-      _$AppDatabase,
+      _$DukaDatabase,
       $ExpensesTable,
       Expense,
       $$ExpensesTableFilterComposer,
@@ -10858,14 +10861,14 @@ typedef $$ExpensesTableProcessedTableManager =
       $$ExpensesTableAnnotationComposer,
       $$ExpensesTableCreateCompanionBuilder,
       $$ExpensesTableUpdateCompanionBuilder,
-      (Expense, BaseReferences<_$AppDatabase, $ExpensesTable, Expense>),
+      (Expense, BaseReferences<_$DukaDatabase, $ExpensesTable, Expense>),
       Expense,
       PrefetchHooks Function()
     >;
 
-class $AppDatabaseManager {
-  final _$AppDatabase _db;
-  $AppDatabaseManager(this._db);
+class $DukaDatabaseManager {
+  final _$DukaDatabase _db;
+  $DukaDatabaseManager(this._db);
   $$UsersTableTableManager get users =>
       $$UsersTableTableManager(_db, _db.users);
   $$CategoriesTableTableManager get categories =>

@@ -3,7 +3,7 @@ import 'package:duka_pos/core/database/database.dart';
 /// Contract for reading and writing [User] rows.
 ///
 /// The database enforces that at most one user may hold role == 'manager'
-/// (see idx_single_manager in AppDatabase); [createUser] is expected to
+/// (see idx_single_manager in DukaDatabase); [createUser] is expected to
 /// surface that violation as a domain-level exception rather than a raw
 /// SqliteException once implemented.
 abstract interface class UserRepository {
