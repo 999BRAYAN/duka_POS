@@ -1,0 +1,1364 @@
+import 'package:build/build.dart';
+import 'package:build_test/build_test.dart';
+import 'package:logging/logging.dart';
+import 'package:test/test.dart';
+
+import '../../utils.dart';
+
+void main() {
+  test('writes entities from imports', () async {
+    // Regression test for https://github.com/simolus3/drift/issues/2175
+    final result = await emulateDriftBuild(inputs: {
+      'a|lib/main.dart': '''
+import 'package:drift/drift.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase {}
+''',
+      'a|lib/a.drift': '''
+import 'b.drift';
+
+CREATE INDEX b_idx /* comment should be stripped */ ON b (foo, upper(foo));
+''',
+      'a|lib/b.drift': 'CREATE TABLE b (foo TEXT);',
+    });
+
+    checkOutputs({
+      'a|lib/main.drift.dart':
+          decodedMatches(contains('late final Index bIdx = Index(\n'
+              "    'b_idx',\n"
+              "    'CREATE INDEX b_idx ON b (foo, upper(foo))',\n"
+              "  );")),
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('keep import aliases', () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': r'''
+import 'dart:io' as io;
+import 'package:drift/drift.dart' as drift;
+import 'tables.dart' as tables;
+
+@drift.DriftDatabase(tables: [tables.Files])
+class MyDatabase extends _$MyDatabase {}
+''',
+        'a|lib/tables.dart': '''
+import 'package:drift/drift.dart';
+
+class Files extends Table {
+  TextColumn get content => text()();
+}
+''',
+      },
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/main.drift.dart': decodedMatches(
+        allOf(
+          contains(
+            r'class $FilesTable extends tables.Files with '
+            r'drift.TableInfo<$FilesTable, File>',
+          ),
+          contains(
+            'class File extends drift.DataClass implements '
+            'drift.Insertable<File>',
+          ),
+        ),
+      ),
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('warns about errors in imports', () async {
+    final logger = Logger.detached('build');
+    final logs = logger.onRecord.map((e) => e.message).toList();
+
+    await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': '''
+import 'package:drift/drift.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase {}
+''',
+        'a|lib/a.drift': '''
+import 'b.drift';
+
+file_analysis_error(? AS TEXT): SELECT ? IN ?2;
+''',
+        'a|lib/b.drift': '''
+CREATE TABLE syntax_error;
+
+CREATE TABLE a (b TEXT);
+
+CREATE INDEX semantic_error ON a (c);
+''',
+      },
+      logger: logger,
+    );
+
+    expect(
+      await logs,
+      [
+        allOf(contains('Expected opening parenthesis'),
+            contains('syntax_error;')),
+        allOf(contains('Unknown column.'), contains('(c);')),
+        allOf(contains('Cannot use an array variable with an explicit index'),
+            contains('?2;')),
+      ],
+    );
+  });
+
+  test('Dart-defined tables are visible in drift files', () async {
+    final logger = Logger.detached('build');
+    expect(logger.onRecord, neverEmits(anything));
+
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+@DataClassName('DFoo')
+class FooTable extends Table {
+  @override
+  String get tableName => 'foo';
+
+  IntColumn get fooId => integer()();
+}
+
+@DriftDatabase(tables: [FooTable], include: {'queries.drift'})
+class MyDatabase {}
+''',
+        'a|lib/tables.drift': '''
+import 'database.dart';
+''',
+        'a|lib/queries.drift': '''
+import 'tables.drift';
+
+selectAll: SELECT * FROM foo;
+''',
+      },
+      logger: logger,
+    );
+
+    checkOutputs({
+      'a|lib/database.drift.dart': decodedMatches(contains('selectAll')),
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('can work with existing part files', () async {
+    final logger = Logger.detached('build');
+    expect(logger.onRecord, neverEmits(anything));
+
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': '''
+import 'package:drift/drift.dart';
+
+part 'table.dart';
+
+@DriftDatabase(tables: [Users])
+class MyDatabase {}
+''',
+        'a|lib/table.dart': '''
+part of 'main.dart';
+
+class Users extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+}
+''',
+      },
+      logger: logger,
+    );
+
+    checkOutputs(
+      {'a|lib/main.drift.dart': decodedMatches(contains('class User'))},
+      result.dartOutputs,
+      result.writer,
+    );
+  });
+
+  test('handles syntax error in source file', () async {
+    final logger = Logger.detached('build');
+    expect(
+      logger.onRecord,
+      emits(
+        isA<LogRecord>().having((e) => e.message, 'message',
+            contains('Could not resolve Dart library package:a/main.dart')),
+      ),
+    );
+
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': '''
+import 'package:drift/drift.dart';
+
+class Users extends Table {
+  IntColumn id => integer().autoIncrement()();
+  TextColumn name => text()();
+}
+
+@DriftDatabase(tables: [Users])
+class MyDatabase {}
+''',
+      },
+      logger: logger,
+    );
+
+    checkOutputs({}, result.dartOutputs, result.writer);
+  });
+
+  test('generates custom result classes with modular generation', () async {
+    final logger = Logger.detached('driftBuild');
+    expect(logger.onRecord, neverEmits(anything));
+
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.drift': '''
+firstQuery AS MyResultClass: SELECT 'foo' AS r1, 1 AS r2;
+secondQuery AS MyResultClass: SELECT 'bar' AS r1, 2 AS r2;
+''',
+      },
+      modularBuild: true,
+      logger: logger,
+    );
+
+    checkOutputs({
+      'a|lib/main.drift.dart': decodedMatches(predicate((String generated) {
+        return 'class MyResultClass'.allMatches(generated).length == 1;
+      })),
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('generates imports for query variables with modular generation',
+      () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.drift': '''
+CREATE TABLE my_table (
+  a INTEGER PRIMARY KEY,
+  b TEXT,
+  c BLOB,
+  d ANY
+) STRICT;
+
+q: INSERT INTO my_table (b, c, d) VALUES (?, ?, ?);
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/main.drift.dart': decodedMatches(
+        allOf(
+          contains(
+            'import \'package:drift/drift.dart\' as i0;\n'
+            'import \'package:a/main.drift.dart\' as i1;\n'
+            'import \'dart:typed_data\' as i2;\n'
+            'import \'package:drift/internal/modular.dart\' as i3;\n',
+          ),
+          contains(
+            'class MyTableData extends i0.DataClass\n'
+            '    implements i0.Insertable<i1.MyTableData> {\n'
+            '  final int a;\n'
+            '  final String? b;\n'
+            '  final i2.Uint8List? c;\n'
+            '  final i0.DriftAny? d;\n',
+          ),
+          contains(
+            '      variables: [\n'
+            '        i0.Variable<String>(var1),\n'
+            '        i0.Variable<i2.Uint8List>(var2),\n'
+            '        i0.Variable<i0.DriftAny>(var3)\n'
+            '      ],\n',
+          ),
+        ),
+      ),
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('can disable manager code for modular builds', () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.drift': '''
+CREATE TABLE my_table (
+  a INTEGER PRIMARY KEY,
+  b TEXT,
+  c BLOB,
+  d ANY
+) STRICT;
+''',
+      },
+      modularBuild: true,
+      options: BuilderOptions({'generate_manager': false}),
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/main.drift.dart': decodedMatches(isNot(contains('Manager'))),
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('supports `MAPPED BY` for columns', () async {
+    final results = await emulateDriftBuild(
+      inputs: {
+        'a|lib/a.drift': '''
+import 'converter.dart';
+
+a: SELECT NULLIF(1, 2) MAPPED BY `myConverter()` AS col;
+''',
+        'a|lib/converter.dart': '''
+import 'package:drift/drift.dart';
+
+TypeConverter<Object, int> myConverter() => throw 'stub';
+''',
+      },
+      modularBuild: true,
+    );
+
+    checkOutputs({
+      'a|lib/a.drift.dart': decodedMatches(contains('''
+class ADrift extends i1.ModularAccessor {
+  ADrift(i0.GeneratedDatabase db) : super(db);
+  i0.Selectable<Object?> a() {
+    return customSelect('SELECT NULLIF(1, 2) AS col',
+            variables: [], readsFrom: {})
+        .map((i0.QueryRow row) => i0.NullAwareTypeConverter.wrapFromSql(
+            i2.myConverter(), row.readNullable<int>('col')));
+  }
+}
+''')),
+    }, results.dartOutputs, results.writer);
+  });
+
+  test('generates type converters for views', () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/a.drift': '''
+import 'converter.dart';
+
+CREATE VIEW my_view AS SELECT
+  CAST(1 AS ENUM(MyEnum)) AS c1,
+  CAST('bar' AS ENUMNAME(MyEnum)) AS c2,
+  1 MAPPED BY `myConverter()` AS c3,
+  NULLIF(1, 2) MAPPED BY `myConverter()` AS c4
+;
+''',
+        'a|lib/converter.dart': '''
+import 'package:drift/drift.dart';
+
+enum MyEnum {
+  foo, bar
+}
+
+TypeConverter<Object, int> myConverter() => throw UnimplementedError();
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs(
+      {
+        'a|lib/a.drift.dart': decodedMatches(
+          allOf(
+            contains(
+                ''''CREATE VIEW my_view AS SELECT CAST(1 AS INT) AS c1, CAST(\\'bar\\' AS TEXT) AS c2, 1 AS c3, NULLIF(1, 2) AS c4','''),
+            contains(r'$converterc1 ='),
+            contains(r'$converterc2 ='),
+            contains(r'$converterc3 ='),
+            contains(r'$converterc4 ='),
+            contains(r'$converterc4n ='),
+          ),
+        ),
+      },
+      result.dartOutputs,
+      result.writer,
+    );
+  });
+
+  test('can restore types from multiple hints', () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/a.drift': '''
+import 'table.dart';
+
+CREATE VIEW my_view AS SELECT foo FROM my_table;
+''',
+        'a|lib/table.dart': '''
+import 'package:drift/drift.dart';
+
+class MyTable extends Table {
+  Int64Column get foo => int64().map(myConverter())();
+}
+
+enum MyEnum {
+  foo, bar
+}
+
+TypeConverter<Object, BigInt> myConverter() => throw UnimplementedError();
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs(
+      {
+        'a|lib/a.drift.dart': decodedMatches(contains(
+            'foo: i2.\$MyTableTable.\$converterfoo.fromSql(attachedDatabase.typeMapping\n'
+            '          .read(i0.DriftSqlType.bigInt')),
+        'a|lib/table.drift.dart': decodedMatches(anything),
+      },
+      result.dartOutputs,
+      result.writer,
+    );
+  });
+
+  test('supports @create queries in modular generation', () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/a.drift': '''
+CREATE TABLE foo (bar INTEGER PRIMARY KEY);
+
+@create: INSERT INTO foo VALUES (1);
+''',
+        'a|lib/db.dart': r'''
+import 'package:drift/drift.dart';
+
+import 'db.drift.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class Database extends $Database {}
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/a.drift.dart':
+          decodedMatches(contains(r'OnCreateQuery get $drift0 => ')),
+      'a|lib/db.drift.dart': decodedMatches(contains(r'.$drift0];'))
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('writes query from transitive import', () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': '''
+import 'package:drift/drift.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase {}
+''',
+        'a|lib/a.drift': '''
+import 'b.drift';
+
+CREATE TABLE foo (bar INTEGER);
+''',
+        'a|lib/b.drift': '''
+import 'c.drift';
+
+CREATE TABLE foo2 (bar INTEGER);
+''',
+        'a|lib/c.drift': '''
+q: SELECT 1;
+''',
+      },
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/main.drift.dart': decodedMatches(
+        contains(r'Selectable<int> q()'),
+      )
+    }, result.dartOutputs, result.writer);
+  });
+
+  test('warns when Dart tables are included', () async {
+    await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': '''
+import 'package:drift/drift.dart';
+
+@DriftDatabase(include: {'b.dart'})
+class MyDatabase {}
+''',
+        'a|lib/b.dart': '''
+import 'package:drift/drift.dart';
+
+class MyTable extends Table {
+  IntColumn get id => integer().primaryKey()();
+}
+''',
+      },
+      logger: loggerThat(emits(emitsThrough(isA<LogRecord>().having(
+          (e) => e.message,
+          'message',
+          contains('will be included in this database: MyTable'))))),
+    );
+  });
+
+  test('writes preamble', () async {
+    final outputs = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': '''
+import 'package:drift/drift.dart';
+
+part 'main.drift.dart';
+
+@DriftDatabase()
+class MyDatabase {}
+''',
+      },
+      options: BuilderOptions({
+        'preamble': '// generated by drift',
+      }),
+    );
+
+    checkOutputs({
+      'a|lib/main.drift.dart': decodedMatches(
+        startsWith('// generated by drift\n'),
+      ),
+    }, outputs.dartOutputs, outputs.writer);
+  });
+
+  test('crawl imports through export', () async {
+    final outputs = await emulateDriftBuild(
+      inputs: {
+        'a|lib/table.dart': '''
+import 'package:drift/drift.dart';
+
+class MyTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+}
+''',
+        'a|lib/barrel.dart': '''
+export 'table.dart';
+''',
+        'a|lib/database.dart': r'''
+import 'package:drift/drift.dart';
+
+import 'barrel.dart';
+
+@DriftDatabase(tables: [MyTable])
+class AppDatabase extends $AppDatabase {
+  AppDatabase(super.e);
+
+  @override
+  int get schemaVersion => 1;
+}
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/table.drift.dart': anything,
+      'a|lib/database.drift.dart': decodedMatches(contains('myTable')),
+    }, outputs.dartOutputs, outputs.writer);
+  });
+
+  test('generates views from drift tables', () async {
+    final debugLogger = Logger('driftBuild');
+    debugLogger.onRecord.listen((e) => print(e.message));
+
+    final result = await emulateDriftBuild(
+        inputs: {
+          'a|lib/drift/datastore_db.dart': '''
+import 'package:drift/drift.dart';
+part 'datastore_db.g.dart';
+mixin AutoIncrement on Table {
+  IntColumn get id => integer().autoIncrement()();
+}
+@DataClassName('TodoEntry')
+class TodosTable extends Table with AutoIncrement {
+  @override
+  String get tableName => 'todos';
+  TextColumn get title => text().withLength(min: 4, max: 16).nullable()();
+  TextColumn get content => text()();
+  @JsonKey('target_date')
+  DateTimeColumn get targetDate => dateTime().nullable().unique()();
+  IntColumn get category => integer().references(Categories, #id).nullable()();
+  TextColumn get status => textEnum<TodoStatus>().nullable()();
+
+  @override
+  List<Set<Column>>? get uniqueKeys => [
+    {title, category},
+    {title, targetDate},
+  ];
+}
+
+enum TodoStatus { open, workInProgress, done }
+
+class Users extends Table with AutoIncrement {
+  TextColumn get name => text().withLength(min: 6, max: 32).unique()();
+  BoolColumn get isAwesome => boolean().withDefault(const Constant(true))();
+
+  BlobColumn get profilePicture => blob()();
+  DateTimeColumn get creationTime => dateTime()
+  // ignore: recursive_getters
+      .check(creationTime.isBiggerThan(Constant(DateTime.utc(1950))))
+      .withDefault(currentDateAndTime)();
+}
+
+@DataClassName('Category')
+class Categories extends Table with AutoIncrement {
+  TextColumn get description =>
+      text().named('desc').customConstraint('NOT NULL UNIQUE')();
+  IntColumn get priority =>
+      intEnum<CategoryPriority>().withDefault(const Constant(0))();
+
+  TextColumn get descriptionInUpperCase =>
+      text().generatedAs(description.upper())();
+}
+
+enum CategoryPriority { low, medium, high }
+abstract class CategoryTodoCountView extends View {
+  TodosTable get todos;
+  Categories get categories;
+
+  Expression<int> get categoryId => categories.id;
+  Expression<String> get description =>
+      categories.description + const Variable('!');
+  Expression<int> get itemCount => todos.id.count();
+
+  @override
+  Query as() => select([categoryId, description, itemCount])
+      .from(categories)
+      .join([innerJoin(todos, todos.category.equalsExp(categories.id))])
+    ..groupBy([categories.id]);
+}
+abstract class ComboGroupView extends View {
+  late final DatastoreDb attachedDatabase;
+  IntColumn get comboGroupID => attachedDatabase.comboGroup.comboGroupID;
+  IntColumn get objectNumber => attachedDatabase.comboGroup.objectNumber;
+  TextColumn get stringText => attachedDatabase.stringTable.stringText;
+  // ComboGroup get comboGroup => attachedDatabase.comboGroup;
+  // late final ComboGroup comboGroup;
+  @override
+  Query as() => select([
+    comboGroupID,
+    objectNumber,
+    stringText,
+  ]).from(attachedDatabase.comboGroup).join([
+    innerJoin(
+        attachedDatabase.stringTable,
+        attachedDatabase.stringTable.stringNumberID
+            .equalsExp(attachedDatabase.comboGroup.nameID)),
+  ]);
+}
+
+@DriftDatabase(
+  tables: [TodosTable, Categories],
+  include: {'combo_group.drift','string_table.drift'},
+  views: [CategoryTodoCountView,ComboGroupView],
+)
+class DatastoreDb extends _\$DatastoreDb {
+  DatastoreDb(super.e);
+  @override
+  int get schemaVersion => 1;
+}
+        ''',
+          'a|lib/drift/combo_group.drift': '''
+        CREATE TABLE [COMBO_GROUP](
+	[ComboGroupID] [int] NOT NULL PRIMARY KEY,
+	[HierStrucID] [bigint] NULL,
+	[ObjectNumber] [int] NULL,
+	[NameID] [bigint] NULL,
+	[OptionBits] [nvarchar](8) NULL,
+	[SluIndex] [int] NULL,
+	[HhtSluIndex] [int] NULL);
+	''',
+          'a|lib/drift/string_table.drift': '''
+CREATE TABLE [STRING_TABLE](
+	[StringID] [bigint] NOT NULL PRIMARY KEY,
+	[StringNumberID] [bigint] NULL,
+	[LangID] [int] NULL,
+	[IsVisible] [bit] NOT NULL DEFAULT ((1)),
+	[IsDeleted] [bit] NOT NULL DEFAULT ((0)),
+	[HierStrucID] [bigint] NULL,
+	[PosRef] [bigint] NULL,
+	[StringText] [nvarchar](128) NULL
+);
+	''',
+        },
+        options: BuilderOptions({'assume_correct_reference': true}),
+        logger: debugLogger);
+
+    checkOutputs(
+      {
+        'a|lib/drift/datastore_db.drift.dart': decodedMatches(
+          allOf(
+            contains('      (attachedDatabase.selectOnly(\n'
+                '        attachedDatabase.comboGroup,\n'
+                '      )'),
+          ),
+        ),
+      },
+      result.dartOutputs,
+      result.writer,
+    );
+  });
+
+  test('escapes module accessorss for leading numerics', () async {
+    final result = await emulateDriftBuild(
+      inputs: {
+        'a|lib/001_main.drift': '''
+CREATE TABLE foo (bar INTEGER PRIMARY KEY);
+
+getFoo: SELECT * FROM foo WHERE bar = ?;
+''',
+        'a|lib/database.dart': r'''
+import 'package:drift/drift.dart';
+
+import 'database.drift.dart';
+import '001_main.drift.dart';
+
+@DriftDatabase(include: {'001_main.drift'})
+class MyDatabase extends _$MyDatabase {}
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/001_main.drift.dart': decodedMatches(
+        contains('class MainDrift extends i2.ModularAccessor'),
+      ),
+      'a|lib/database.drift.dart': decodedMatches(
+        contains('i1.MainDrift get mainDrift'),
+      ),
+    }, result.dartOutputs, result.writer);
+  });
+
+  group('generates view triggers', timeout: Timeout.none, () {
+    const options = BuilderOptions(
+      {
+        'sql': {
+          'options': {'version': '3.35'}
+        }
+      },
+    );
+
+    test('for create', () async {
+      final result = await emulateDriftBuild(
+        inputs: {
+          'a|lib/a.drift': '''
+CREATE TABLE foo(id INTEGER PRIMARY KEY, name TEXT);
+CREATE VIEW foo_view AS SELECT * FROM foo;
+
+CREATE TRIGGER foo_create
+INSTEAD OF INSERT ON foo_view
+BEGIN
+  INSERT INTO foo VALUES (new.id, new.name);
+END;
+
+createFoo: INSERT INTO foo_view DEFAULT VALUES RETURNING *;
+''',
+          'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+part 'database.g.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase extends _\$MyDatabase {}
+''',
+        },
+        modularBuild: false,
+        logger: loggerThat(neverEmits(anything)),
+        options: options,
+      );
+
+      checkOutputs(
+        {
+          'a|lib/database.drift.dart': decodedMatches(
+            allOf([
+              contains('FooView fooView = FooView(this)'),
+              stringContainsInOrder([
+                'Future<List<FooViewData>> createFoo()',
+                'then((rows) => Future.wait(rows.map(fooView.mapFromRow)))',
+              ]),
+              contains('Trigger fooCreate'),
+            ]),
+          ),
+        },
+        result.dartOutputs,
+        result.writer,
+      );
+    });
+
+    test('for create (modular)', () async {
+      final result = await emulateDriftBuild(
+        inputs: {
+          'a|lib/a.drift': '''
+CREATE TABLE foo(id INTEGER PRIMARY KEY, name TEXT);
+CREATE VIEW foo_view AS SELECT * FROM foo;
+
+CREATE TRIGGER foo_create
+INSTEAD OF INSERT ON foo_view
+BEGIN
+  INSERT INTO foo VALUES (new.id, new.name);
+END;
+
+createFoo: INSERT INTO foo_view DEFAULT VALUES RETURNING *;
+''',
+          'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+import 'a.drift.dart';
+import 'database.drift.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase extends \$MyDatabase {}
+''',
+        },
+        modularBuild: true,
+        logger: loggerThat(neverEmits(anything)),
+        options: options,
+      );
+
+      checkOutputs(
+        {
+          'a|lib/database.drift.dart': decodedMatches(contains(
+            'i1.FooView fooView = i1.FooView(this)',
+          )),
+          'a|lib/a.drift.dart': decodedMatches(allOf([
+            contains('i0.Trigger get fooCreate'),
+            stringContainsInOrder([
+              'Future<List<i1.FooViewData>> createFoo()',
+              'then((rows) => Future.wait(rows.map(fooView.mapFromRow)))',
+            ]),
+          ])),
+        },
+        result.dartOutputs,
+        result.writer,
+      );
+    });
+
+    test('for update', () async {
+      final result = await emulateDriftBuild(
+        inputs: {
+          'a|lib/a.drift': '''
+CREATE TABLE foo(id INTEGER PRIMARY KEY, name TEXT);
+CREATE VIEW foo_view AS SELECT * FROM foo;
+
+CREATE TRIGGER foo_update
+INSTEAD OF UPDATE ON foo_view
+BEGIN
+  UPDATE foo SET name = new.name WHERE id = new.id;
+END;
+
+updateFoo: UPDATE foo_view SET name = '' WHERE id = :id RETURNING *;
+''',
+          'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+part 'database.g.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase extends _\$MyDatabase {}
+''',
+        },
+        modularBuild: false,
+        logger: loggerThat(neverEmits(anything)),
+        options: options,
+      );
+
+      checkOutputs(
+        {
+          'a|lib/database.drift.dart': decodedMatches(
+            allOf([
+              contains('FooView fooView = FooView(this)'),
+              stringContainsInOrder([
+                'Future<List<FooViewData>> updateFoo(int id)',
+                'then((rows) => Future.wait(rows.map(fooView.mapFromRow)))',
+              ]),
+              contains('Trigger fooUpdate'),
+            ]),
+          ),
+        },
+        result.dartOutputs,
+        result.writer,
+      );
+    });
+
+    test('for update (modular)', () async {
+      final result = await emulateDriftBuild(
+        inputs: {
+          'a|lib/a.drift': '''
+CREATE TABLE foo(id INTEGER PRIMARY KEY, name TEXT);
+CREATE VIEW foo_view AS SELECT * FROM foo;
+
+CREATE TRIGGER foo_update
+INSTEAD OF UPDATE ON foo_view
+BEGIN
+  UPDATE foo SET name = new.name WHERE id = new.id;
+END;
+
+updateFoo: UPDATE foo_view SET name = '' WHERE id = :id RETURNING *;
+''',
+          'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+import 'a.drift.dart';
+import 'database.drift.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase extends \$MyDatabase {}
+''',
+        },
+        modularBuild: true,
+        logger: loggerThat(neverEmits(anything)),
+        options: options,
+      );
+
+      checkOutputs(
+        {
+          'a|lib/database.drift.dart': decodedMatches(contains(
+            'i1.FooView fooView = i1.FooView(this)',
+          )),
+          'a|lib/a.drift.dart': decodedMatches(allOf([
+            contains('i0.Trigger get fooUpdate'),
+            stringContainsInOrder([
+              'Future<List<i1.FooViewData>> updateFoo(int id)',
+              'then((rows) => Future.wait(rows.map(fooView.mapFromRow)))',
+            ]),
+          ])),
+        },
+        result.dartOutputs,
+        result.writer,
+      );
+    });
+
+    test('for delete', () async {
+      final result = await emulateDriftBuild(
+        inputs: {
+          'a|lib/a.drift': '''
+CREATE TABLE foo(id INTEGER PRIMARY KEY, name TEXT);
+CREATE VIEW foo_view AS SELECT * FROM foo;
+
+CREATE TRIGGER foo_delete
+INSTEAD OF DELETE ON foo_view
+BEGIN
+  DELETE FROM foo WHERE id = old.id;
+END;
+
+deleteFoo: DELETE FROM foo_view WHERE id = :id;
+''',
+          'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+part 'database.g.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase extends _\$MyDatabase {}
+''',
+        },
+        modularBuild: false,
+        logger: loggerThat(neverEmits(anything)),
+        options: options,
+      );
+
+      checkOutputs(
+        {
+          'a|lib/database.drift.dart': decodedMatches(
+            allOf([
+              contains('FooView fooView = FooView(this)'),
+              contains('Future<int> deleteFoo(int id)'),
+              contains('Trigger fooDelete'),
+            ]),
+          ),
+        },
+        result.dartOutputs,
+        result.writer,
+      );
+    });
+
+    test('for delete (modular)', () async {
+      final result = await emulateDriftBuild(
+        inputs: {
+          'a|lib/a.drift': '''
+CREATE TABLE foo(id INTEGER PRIMARY KEY, name TEXT);
+CREATE VIEW foo_view AS SELECT * FROM foo;
+
+CREATE TRIGGER foo_delete
+INSTEAD OF DELETE ON foo_view
+BEGIN
+  DELETE FROM foo WHERE id = old.id;
+END;
+
+deleteFoo: DELETE FROM foo_view WHERE id = :id;
+''',
+          'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+import 'a.drift.dart';
+import 'database.drift.dart';
+
+@DriftDatabase(include: {'a.drift'})
+class MyDatabase extends \$MyDatabase {}
+''',
+        },
+        modularBuild: true,
+        logger: loggerThat(neverEmits(anything)),
+        options: options,
+      );
+
+      checkOutputs(
+        {
+          'a|lib/database.drift.dart': decodedMatches(contains(
+            'i1.FooView fooView = i1.FooView(this)',
+          )),
+          'a|lib/a.drift.dart': decodedMatches(allOf([
+            contains('i0.Trigger get fooDelete'),
+            contains('Future<int> deleteFoo(int id)'),
+          ])),
+        },
+        result.dartOutputs,
+        result.writer,
+      );
+    });
+  });
+
+  group('reports issues', () {
+    for (final fatalWarnings in [false, true]) {
+      group('fatalWarnings: $fatalWarnings', () {
+        final options = BuilderOptions(
+          {'fatal_warnings': fatalWarnings},
+          isRoot: true,
+        );
+
+        Future<void> runTest(String source, expectedMessage) async {
+          final build = emulateDriftBuild(
+            inputs: {'a|lib/a.drift': source},
+            logger: loggerThat(emits(record(expectedMessage))),
+            modularBuild: true,
+            options: options,
+          );
+
+          if (fatalWarnings) {
+            await expectLater(build, throwsA(anything));
+          } else {
+            await build;
+          }
+        }
+
+        test('syntax', () async {
+          await runTest(
+              'foo: SELECT;', contains('Could not parse this expression'));
+        });
+
+        test('semantic in analysis', () async {
+          await runTest('''
+            CREATE TABLE foo (
+              id INTEGER NOT NULL PRIMARY KEY,
+              unknown INTEGER NOT NULL REFERENCES another ("table")
+            );
+          ''', contains('could not be found in any import.'));
+        });
+
+        test('file analysis', () async {
+          await runTest(
+              r'a($x = 2): SELECT 1, 2, 3 ORDER BY $x;',
+              contains('This placeholder has a default value, which is only '
+                  'supported for expressions.'));
+        });
+      });
+    }
+  });
+
+  test('warns about missing imports', () async {
+    await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.drift': '''
+import 'package:b/b.drift';
+import 'package:a/missing.drift';
+
+CREATE TABLE users (
+  another INTEGER REFERENCES b(foo)
+);
+''',
+        'b|lib/b.drift': '''
+CREATE TABLE b (foo INTEGER);
+''',
+      },
+      logger: loggerThat(
+        emitsInAnyOrder(
+          [
+            record(
+              allOf(
+                contains(
+                    "The imported file, `package:b/b.drift`, does not exist or can't be imported"),
+                contains('Note: When importing drift files across packages'),
+              ),
+            ),
+            record(allOf(
+              contains('package:a/missing.drift'),
+              isNot(contains('Note: When')),
+            )),
+            record(contains('`b` could not be found in any import.')),
+          ],
+        ),
+      ),
+    );
+  }, skip: 'Detailed logs not available through testBuilders');
+
+  test('generates generic type converters correctly', () async {
+    // Regression test for https://github.com/simolus3/drift/issues/3300
+    final build = await emulateDriftBuild(
+      inputs: {
+        'a|lib/main.dart': '''
+import 'dart:convert';
+import 'package:drift/drift.dart';
+
+part 'main.drift.dart';
+
+class MapConverter<T> extends TypeConverter<Map<String, T>, String> {
+  @override
+  Map<String, T> fromSql(String fromDb) {
+    return Map<String, T>.from(jsonDecode(fromDb) ?? {});
+  }
+
+  @override
+  String toSql(Map<String, T> value) {
+    return jsonEncode(value);
+  }
+}
+
+class Users extends Table {
+  IntColumn get id => integer()();
+  TextColumn get extraData => text().map(MapConverter<Object?>())();
+}
+
+@DriftDatabase(tables: [Users])
+class Database {}
+''',
+      },
+      logger: loggerThat(neverEmits(anything)),
+      options: BuilderOptions({'generate_manager': false}),
+    );
+
+    checkOutputs(
+      {
+        'a|lib/main.drift.dart': decodedMatches(contains(r'''
+  static TypeConverter<Map<String, Object?>, String> $converterextraData =
+      MapConverter<Object?>();
+'''))
+      },
+      build.dartOutputs,
+      build.writer,
+    );
+  });
+
+  test('generates modular accessor for drift file that only has imports',
+      () async {
+    final build = await emulateDriftBuild(
+      inputs: {
+        'a|lib/a.drift': '''
+import 'src/first.drift';
+import 'src/second.drift';
+''',
+        'a|lib/src/first.drift': '''
+first: SELECT 1;
+''',
+        'a|lib/src/second.drift': '''
+second: SELECT 2;
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/a.drift.dart': decodedMatches(contains('ModularAccessor')),
+      'a|lib/src/first.drift.dart': anything,
+      'a|lib/src/second.drift.dart': anything,
+    }, build.dartOutputs, build.writer);
+  });
+
+  test('generates manager references for tables in different files', () async {
+    final build = await emulateDriftBuild(
+      inputs: {
+        'a|lib/users.dart': '''
+import 'package:drift/drift.dart';
+
+import 'groups.dart';
+
+class Users extends Table {
+  late final id = integer().autoIncrement()();
+  late final name = text()();
+}
+''',
+        'a|lib/groups.dart': '''
+import 'package:drift/drift.dart';
+
+import 'users.dart';
+
+class Groups extends Table {
+  late final id = integer().autoIncrement()();
+  late final name = text()();
+  @ReferenceName('administeredGroups')
+  late final admin = integer().nullable().references(Users, #id)();
+  @ReferenceName('ownedGroups')
+  late final owner = integer().references(Users, #id)();
+}
+''',
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/users.drift.dart': decodedMatches(
+        allOf(contains('ownedGroups'), contains('administeredGroups')),
+      ),
+      'a|lib/groups.drift.dart': anything,
+    }, build.dartOutputs, build.writer);
+  });
+
+  test(
+    'warns when dao references table not added to main database',
+    () async {
+      await emulateDriftBuild(
+        inputs: {
+          'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+import 'dao.dart';
+
+class Users extends Table {
+  late final id = integer().autoIncrement()();
+  late final name = text()();
+}
+
+@DriftDatabase(daos: [TestAccessor])
+class AppDatabase {}
+''',
+          'a|lib/dao.dart': '''
+import 'package:drift/drift.dart';
+
+import 'database.dart';
+
+@DriftAccessor(tables: [Users])
+class TestAccessor extends DatabaseAccessor<AppDatabase> {
+}
+''',
+        },
+        modularBuild: true,
+        logger: loggerThat(
+          emits(
+            emits(
+              isA<LogRecord>().having(
+                (e) => e.message,
+                'message',
+                contains(
+                  "TestAccessor references tables that aren't available on the "
+                  'main database: [users]',
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  test('not added false positive', () async {
+    // Regression test for https://github.com/simolus3/drift/issues/3656
+    await emulateDriftBuild(
+      inputs: {
+        'a|lib/database.dart': '''
+import 'package:drift/drift.dart';
+
+import 'dao.dart';
+
+@DriftDatabase(include: {'tables.drift'}, daos: [Accessor])
+class Repro {
+  Repro(super.e);
+
+  @override
+  int get schemaVersion => 1;
+}
+''',
+        'a|lib/dao.dart': '''
+import 'package:drift/drift.dart';
+
+import 'database.dart';
+
+@DriftAccessor(include: {'query.drift'})
+class Accessor extends DatabaseAccessor<Repro> {
+  Accessor(super.attachedDatabase);
+}
+''',
+        'a|lib/tables.drift': '''
+CREATE TABLE my_table (
+    id INTEGER NOT NULL PRIMARY KEY,
+    another TEXT NOT NULL
+);
+''',
+        'a|lib/query.drift': '''
+import 'tables.drift';
+
+foo: SELECT * FROM my_table;
+''',
+      },
+      modularBuild: false,
+      logger: loggerThat(neverEmits(anything)),
+    );
+  });
+
+  test('nullable reference to non-nullable intEnum column', () async {
+    // regression test for https://github.com/simolus3/drift/issues/3748
+    final results = await emulateDriftBuild(
+      inputs: {
+        'a|lib/table.dart': '''
+import 'package:drift/drift.dart';
+
+class Orders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+}
+
+class Actions extends Table {
+  late final IntColumn orderId = integer()();
+  late final IntColumn code = intEnum<ActionCodeModel>()();
+}
+
+enum ActionCodeModel { DELIVER, PICKUP }
+''',
+        'a|lib/view.drift': '''
+import 'table.dart';
+
+CREATE VIEW orders_view AS
+SELECT
+    o.id AS order_id,
+    a.code AS action_code
+FROM
+    orders o
+LEFT JOIN
+    actions a
+ON
+    o.id = a.order_id;
+'''
+      },
+      modularBuild: true,
+      logger: loggerThat(neverEmits(anything)),
+    );
+
+    checkOutputs({
+      'a|lib/view.drift.dart': decodedMatches(
+        allOf(
+            contains('actionCode: i0.JsonTypeConverter2.asNullable('),
+            contains(
+                "'action_code': serializer.toJson<int?>(i0.JsonTypeConverter2.asNullable(")),
+      ),
+      'a|lib/table.drift.dart': anything,
+    }, results.dartOutputs, results.writer);
+  });
+}

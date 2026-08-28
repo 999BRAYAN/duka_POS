@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 import 'tables/categories_table.dart';
@@ -60,6 +61,13 @@ class DukaDatabase extends _$DukaDatabase {
   );
 }
 
+// SQLite has foreign key enforcement off by default. It must be set via
+// setup on the raw connection (outside any transaction) - setting it in
+// MigrationStrategy.beforeOpen via customStatement is silently ineffective.
+void enableForeignKeys(Database database) {
+  database.execute('PRAGMA foreign_keys = ON');
+}
+
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
@@ -69,6 +77,6 @@ LazyDatabase _openConnection() {
       await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
     }
 
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(file, setup: enableForeignKeys);
   });
 }

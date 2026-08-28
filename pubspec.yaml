@@ -107,3 +107,5 @@ flutter:
 dependency_overrides:
   objective_c:
     path: vendor/objective_c_nohook
+  drift_dev:
+    path: vendor/drift_dev_patched
