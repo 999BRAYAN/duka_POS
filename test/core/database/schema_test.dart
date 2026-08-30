@@ -1,8 +1,6 @@
-import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqlite3/sqlite3.dart';
 
 const _expectedTables = {
   'users',
