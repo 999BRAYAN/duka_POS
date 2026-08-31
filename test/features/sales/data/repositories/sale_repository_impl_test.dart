@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
 import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
+import 'package:duka_pos/features/sales/domain/exceptions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -100,5 +101,187 @@ void main() {
       db.stockMovements,
     )..where((t) => t.productId.equals(productId))).get();
     expect(movements.map((m) => m.type), containsAll(['SALE', 'RETURN']));
+  });
+
+  group('createSale price floor', () {
+    Future<int> addProduct(String name, {required double minSellingPrice}) async {
+      final product = await db.into(db.products).insertReturning(
+        ProductsCompanion.insert(
+          uuid: 'prod-$name',
+          name: name,
+          stock: const Value(50),
+          minSellingPrice: Value(minSellingPrice),
+          createdAt: DateTime.now(),
+        ),
+      );
+      return product.id;
+    }
+
+    test('rejects a line priced below its product\'s minSellingPrice', () async {
+      final capId = await addProduct('Bottle Cap', minSellingPrice: 60);
+
+      await expectLater(
+        repo.createSale(
+          invoiceNumber: 'INV-1',
+          userId: userId,
+          items: [
+            SaleItemsCompanion.insert(
+              uuid: 'item-placeholder',
+              saleId: 0,
+              productId: capId,
+              quantity: 3,
+              unitPrice: 50,
+              total: 150, // 50/unit, below the 60 floor
+              createdAt: DateTime.now(),
+            ),
+          ],
+          paymentMethod: 'cash',
+        ),
+        throwsA(
+          isA<PriceBelowFloorException>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('Bottle Cap'), contains('60.00')),
+          ),
+        ),
+      );
+
+      expect(await repo.watchSales().first, isEmpty);
+    });
+
+    test('allows a line priced exactly at the floor', () async {
+      final capId = await addProduct('Bottle Cap', minSellingPrice: 60);
+
+      final sale = await repo.createSale(
+        invoiceNumber: 'INV-2',
+        userId: userId,
+        items: [
+          SaleItemsCompanion.insert(
+            uuid: 'item-placeholder',
+            saleId: 0,
+            productId: capId,
+            quantity: 2,
+            unitPrice: 60,
+            total: 120,
+            createdAt: DateTime.now(),
+          ),
+        ],
+        paymentMethod: 'cash',
+      );
+
+      expect(sale.total, 120);
+    });
+
+    test('an item-level discount that pushes the effective price below the floor is caught', () async {
+      final capId = await addProduct('Bottle Cap', minSellingPrice: 90);
+
+      // Listed at 100/unit, but a 20 line-level discount brings the net
+      // total to 80 for the single unit — below the 90 floor even though
+      // unitPrice alone looks fine.
+      await expectLater(
+        repo.createSale(
+          invoiceNumber: 'INV-3',
+          userId: userId,
+          items: [
+            SaleItemsCompanion.insert(
+              uuid: 'item-placeholder',
+              saleId: 0,
+              productId: capId,
+              quantity: 1,
+              unitPrice: 100,
+              discount: const Value(20),
+              total: 80,
+              createdAt: DateTime.now(),
+            ),
+          ],
+          paymentMethod: 'cash',
+        ),
+        throwsA(isA<PriceBelowFloorException>()),
+      );
+    });
+
+    test('a proportionally-allocated cart-level discount that pushes one line below the floor is caught', () async {
+      final cheapId = await addProduct('Cheap Item', minSellingPrice: 60);
+      final pricierId = await addProduct('Pricier Item', minSellingPrice: 150);
+
+      // subtotal 300; a 90 cart discount allocates 30 to the 100-total line
+      // (effective 70, fine against a 60 floor) and 60 to the 200-total
+      // line (effective 140, below its 150 floor).
+      await expectLater(
+        repo.createSale(
+          invoiceNumber: 'INV-4',
+          userId: userId,
+          items: [
+            SaleItemsCompanion.insert(
+              uuid: 'item-1',
+              saleId: 0,
+              productId: cheapId,
+              quantity: 1,
+              unitPrice: 100,
+              total: 100,
+              createdAt: DateTime.now(),
+            ),
+            SaleItemsCompanion.insert(
+              uuid: 'item-2',
+              saleId: 0,
+              productId: pricierId,
+              quantity: 1,
+              unitPrice: 200,
+              total: 200,
+              createdAt: DateTime.now(),
+            ),
+          ],
+          discount: 90,
+          paymentMethod: 'cash',
+        ),
+        throwsA(
+          isA<PriceBelowFloorException>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Pricier Item'),
+          ),
+        ),
+      );
+
+      expect(await repo.watchSales().first, isEmpty);
+    });
+
+    test('succeeds when a cart-level discount still keeps every line at or above its floor', () async {
+      final cheapId = await addProduct('Cheap Item', minSellingPrice: 60);
+      final pricierId = await addProduct('Pricier Item', minSellingPrice: 100);
+
+      // Same 90 discount, but this time proportionally allocated as 30/60
+      // leaves both lines (70 and 140) at or above their floors.
+      final sale = await repo.createSale(
+        invoiceNumber: 'INV-5',
+        userId: userId,
+        items: [
+          SaleItemsCompanion.insert(
+            uuid: 'item-1',
+            saleId: 0,
+            productId: cheapId,
+            quantity: 1,
+            unitPrice: 100,
+            total: 100,
+            createdAt: DateTime.now(),
+          ),
+          SaleItemsCompanion.insert(
+            uuid: 'item-2',
+            saleId: 0,
+            productId: pricierId,
+            quantity: 1,
+            unitPrice: 200,
+            total: 200,
+            createdAt: DateTime.now(),
+          ),
+        ],
+        discount: 90,
+        paymentMethod: 'cash',
+      );
+
+      expect(sale.total, 210); // 300 - 90
+      final movements = await db.select(db.stockMovements).get();
+      expect(movements, hasLength(2));
+    });
   });
 }

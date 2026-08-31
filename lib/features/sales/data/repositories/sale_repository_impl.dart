@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/features/inventory/domain/repositories/stock_movement_repository.dart';
+import 'package:duka_pos/features/sales/domain/exceptions.dart';
 import 'package:duka_pos/features/sales/domain/repositories/sale_repository.dart';
 import 'package:uuid/uuid.dart';
 
@@ -31,6 +32,20 @@ class SaleRepositoryImpl implements SaleRepository {
       final now = DateTime.now();
       final subtotal = items.fold<double>(0, (sum, i) => sum + i.total.value);
 
+      // Fetched once up front: reused both for the floor check below and
+      // for costPrice when recording each stock movement, and means the
+      // floor check runs (and can throw, rolling back the transaction)
+      // before anything is written.
+      final products = <int, Product>{};
+      for (final item in items) {
+        final productId = item.productId.value;
+        products[productId] ??= await (_db.select(
+          _db.products,
+        )..where((t) => t.id.equals(productId))).getSingle();
+      }
+
+      _assertNoLineBelowFloor(items: items, subtotal: subtotal, cartDiscount: discount, products: products);
+
       final sale = await _db.into(_db.sales).insertReturning(
         SalesCompanion.insert(
           uuid: _uuid.v4(),
@@ -58,10 +73,7 @@ class SaleRepositoryImpl implements SaleRepository {
 
         final productId = item.productId.value;
         final quantity = item.quantity.value;
-
-        final product = await (_db.select(
-          _db.products,
-        )..where((t) => t.id.equals(productId))).getSingle();
+        final product = products[productId]!;
 
         await _stockMovements.recordMovement(
           productId: productId,
@@ -75,6 +87,37 @@ class SaleRepositoryImpl implements SaleRepository {
 
       return sale;
     });
+  }
+
+  /// [item.total] is taken as already net of that line's own item-level
+  /// discount (the convention the rest of this method's `subtotal` uses),
+  /// so the only further deduction applied here is [cartDiscount],
+  /// allocated across lines in proportion to their share of [subtotal].
+  void _assertNoLineBelowFloor({
+    required List<SaleItemsCompanion> items,
+    required double subtotal,
+    required double cartDiscount,
+    required Map<int, Product> products,
+  }) {
+    for (final item in items) {
+      final quantity = item.quantity.value;
+      if (quantity <= 0) continue;
+
+      final lineTotal = item.total.value;
+      final allocatedCartDiscount = subtotal > 0
+          ? cartDiscount * (lineTotal / subtotal)
+          : 0.0;
+      final effectivePrice = (lineTotal - allocatedCartDiscount) / quantity;
+
+      final product = products[item.productId.value]!;
+      if (effectivePrice < product.minSellingPrice) {
+        throw PriceBelowFloorException(
+          productName: product.name,
+          effectivePrice: effectivePrice,
+          minSellingPrice: product.minSellingPrice,
+        );
+      }
+    }
   }
 
   @override
