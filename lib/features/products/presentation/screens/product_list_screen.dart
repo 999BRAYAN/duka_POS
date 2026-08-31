@@ -3,6 +3,7 @@ import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/products/presentation/providers/product_list_providers.dart';
 import 'package:duka_pos/features/purchases/presentation/screens/purchase_list_screen.dart';
+import 'package:duka_pos/features/sales/presentation/screens/sale_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -55,6 +56,16 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               ),
               icon: const Icon(Icons.local_shipping_outlined, size: 18),
               label: const Text('Purchases'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SaleScreen()),
+              ),
+              icon: const Icon(Icons.point_of_sale, size: 18),
+              label: const Text('New sale'),
             ),
           ),
         ],
