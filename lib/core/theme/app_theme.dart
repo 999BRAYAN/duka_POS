@@ -21,6 +21,16 @@ abstract final class AppColors {
   static const amber600 = Color(0xFFD97706);
   static const amber700 = Color(0xFFB45309);
   static const amber800 = Color(0xFF92400E);
+
+  // Semantic status colors — separate from the amber accent, used only for
+  // state (e.g. payment status chips), not for branding.
+  static const green50 = Color(0xFFF0FDF4);
+  static const green200 = Color(0xFFBBF7D0);
+  static const green700 = Color(0xFF15803D);
+
+  static const rust50 = Color(0xFFFDF2EE);
+  static const rust200 = Color(0xFFE9BBA9);
+  static const rust700 = Color(0xFF9F3A22);
 }
 
 ThemeData buildAppTheme() {

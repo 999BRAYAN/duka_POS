@@ -13,17 +13,19 @@ final categoriesStreamProvider = StreamProvider<List<Category>>((ref) {
   return ref.watch(categoryRepositoryProvider).watchCategories();
 });
 
-final _productsStreamProvider = StreamProvider<List<Product>>((ref) {
+/// All active products — also used directly (unfiltered) by screens like
+/// the receive-stock form's product picker.
+final productsStreamProvider = StreamProvider<List<Product>>((ref) {
   return ref.watch(productRepositoryProvider).watchProducts();
 });
 
-/// [_productsStreamProvider] filtered by search text (matches name, SKU or
+/// [productsStreamProvider] filtered by search text (matches name, SKU or
 /// barcode), category and low-stock-only — recombined client-side on every
 /// change to the product list or any filter, since the catalog is small
 /// enough that this beats adding a bespoke SQL query per filter
 /// combination.
 final filteredProductsProvider = Provider<AsyncValue<List<Product>>>((ref) {
-  final productsAsync = ref.watch(_productsStreamProvider);
+  final productsAsync = ref.watch(productsStreamProvider);
   final query = ref.watch(productSearchQueryProvider).trim().toLowerCase();
   final categoryId = ref.watch(productCategoryFilterProvider);
   final lowStockOnly = ref.watch(productLowStockOnlyProvider);
