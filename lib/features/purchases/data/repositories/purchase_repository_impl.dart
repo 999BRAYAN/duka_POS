@@ -14,6 +14,7 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
   final DukaDatabase _db;
   final StockMovementRepository _stockMovements;
   static const _uuid = Uuid();
+  static const _validPaymentStatuses = {'paid', 'partial', 'unpaid'};
 
   @override
   Future<Purchase> createPurchase({
@@ -94,6 +95,108 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
           updatedAt: Value(now),
         ),
       );
+    });
+  }
+
+  @override
+  Future<Purchase> receiveStock({
+    String? referenceNumber,
+    required int supplierId,
+    required int userId,
+    required List<PurchaseItemsCompanion> items,
+    double discount = 0,
+    double tax = 0,
+    required String paymentStatus,
+    required double amountPaid,
+  }) async {
+    if (!_validPaymentStatuses.contains(paymentStatus)) {
+      throw InvalidPaymentStatusException(
+        "Unknown payment status '$paymentStatus'; expected one of "
+        '$_validPaymentStatuses.',
+      );
+    }
+
+    return _db.transaction(() async {
+      final now = DateTime.now();
+      // Generated up front so recordMovement (called per item, before the
+      // Purchase row exists) can still reference it.
+      final purchaseUuid = _uuid.v4();
+      final subtotal = items.fold<double>(0, (sum, i) => sum + i.total.value);
+      final total = subtotal - discount + tax;
+
+      for (final item in items) {
+        final productId = item.productId.value;
+        final quantity = item.quantity.value;
+        final unitCost = item.unitCost.value;
+
+        final product = await (_db.select(
+          _db.products,
+        )..where((t) => t.id.equals(productId))).getSingle();
+
+        final newCost =
+            (product.stock * product.costPrice + quantity * unitCost) /
+            (product.stock + quantity);
+
+        await _stockMovements.recordMovement(
+          productId: productId,
+          type: 'PURCHASE',
+          quantity: quantity,
+          unitCost: unitCost,
+          reference: purchaseUuid,
+          userId: userId,
+        );
+
+        await (_db.update(
+          _db.products,
+        )..where((t) => t.id.equals(productId))).write(
+          ProductsCompanion(costPrice: Value(newCost), updatedAt: Value(now)),
+        );
+      }
+
+      final purchase = await _db.into(_db.purchases).insertReturning(
+        PurchasesCompanion.insert(
+          uuid: purchaseUuid,
+          referenceNumber: Value(referenceNumber),
+          supplierId: supplierId,
+          userId: userId,
+          subtotal: Value(subtotal),
+          discount: Value(discount),
+          tax: Value(tax),
+          total: Value(total),
+          amountPaid: Value(amountPaid),
+          status: const Value('received'),
+          paymentStatus: Value(paymentStatus),
+          createdAt: now,
+        ),
+      );
+
+      for (final item in items) {
+        await _db.into(_db.purchaseItems).insert(
+          item.copyWith(
+            uuid: Value(_uuid.v4()),
+            purchaseId: Value(purchase.id),
+            createdAt: Value(now),
+          ),
+        );
+      }
+
+      final outstanding = total - amountPaid;
+      if (outstanding > 0) {
+        final supplier = await (_db.select(
+          _db.suppliers,
+        )..where((t) => t.id.equals(supplierId))).getSingle();
+
+        await (_db.update(
+          _db.suppliers,
+        )..where((t) => t.id.equals(supplierId))).write(
+          SuppliersCompanion(
+            balance: Value(supplier.balance + outstanding),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+
+      return purchase;
     });
   }
 

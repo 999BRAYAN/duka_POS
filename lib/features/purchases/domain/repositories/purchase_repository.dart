@@ -19,6 +19,31 @@ abstract interface class PurchaseRepository {
 
   Future<void> cancelPurchase(String uuid);
 
+  /// Records stock received from a supplier in one transaction, already
+  /// marked 'received' — for shops that log a purchase at the moment goods
+  /// arrive rather than creating a pending order first. For each item:
+  /// reads the product's current stock and costPrice, computes the new
+  /// quantity-weighted average cost, records the stock change via
+  /// [StockMovementRepository.recordMovement] (the only path allowed to
+  /// touch [Product.stock] — this does not update stock any other way),
+  /// and writes that average back to [Product.costPrice]. Then inserts the
+  /// Purchase and PurchaseItems rows, and — if [amountPaid] is less than
+  /// the computed total — adds the shortfall to the supplier's
+  /// [Supplier.balance].
+  ///
+  /// Throws [InvalidPaymentStatusException] if [paymentStatus] isn't one of
+  /// 'paid', 'partial' or 'unpaid'.
+  Future<Purchase> receiveStock({
+    String? referenceNumber,
+    required int supplierId,
+    required int userId,
+    required List<PurchaseItemsCompanion> items,
+    double discount,
+    double tax,
+    required String paymentStatus,
+    required double amountPaid,
+  });
+
   Future<Purchase?> getPurchaseByUuid(String uuid);
 
   Future<List<PurchaseItem>> getItemsForPurchase(int purchaseId);

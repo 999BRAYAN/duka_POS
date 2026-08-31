@@ -142,4 +142,107 @@ void main() {
     final cancelled = await repo.getPurchaseByUuid(purchase.uuid);
     expect(cancelled?.status, 'cancelled');
   });
+
+  group('receiveStock', () {
+    test('computes the quantity-weighted average cost and updates stock', () async {
+      await (db.update(
+        db.products,
+      )..where((t) => t.id.equals(productId))).write(
+        const ProductsCompanion(stock: Value(10), costPrice: Value(20)),
+      );
+
+      await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)], // unitCost 30
+        paymentStatus: 'paid',
+        amountPaid: 300,
+      );
+
+      final product = await (db.select(
+        db.products,
+      )..where((t) => t.id.equals(productId))).getSingle();
+      expect(product.stock, 20);
+      expect(product.costPrice, 25); // (10*20 + 10*30) / 20
+    });
+
+    test('records a PURCHASE stock movement referencing the purchase', () async {
+      final purchase = await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'paid',
+        amountPaid: 300,
+      );
+
+      final movements = await (db.select(
+        db.stockMovements,
+      )..where((t) => t.productId.equals(productId))).get();
+      expect(movements.single.type, 'PURCHASE');
+      expect(movements.single.quantity, 10);
+      expect(movements.single.unitCost, 30);
+      expect(movements.single.reference, purchase.uuid);
+      expect(movements.single.userId, userId);
+    });
+
+    test('marks the purchase received and stores the payment status', () async {
+      final purchase = await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'partial',
+        amountPaid: 200,
+      );
+
+      expect(purchase.status, 'received');
+      expect(purchase.paymentStatus, 'partial');
+      expect(purchase.total, 300);
+    });
+
+    test('adds the shortfall to Supplier.balance when underpaid', () async {
+      await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'partial',
+        amountPaid: 200,
+      );
+
+      final supplier = await (db.select(
+        db.suppliers,
+      )..where((t) => t.id.equals(supplierId))).getSingle();
+      expect(supplier.balance, 100);
+    });
+
+    test('leaves Supplier.balance unchanged when paid in full', () async {
+      await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'paid',
+        amountPaid: 300,
+      );
+
+      final supplier = await (db.select(
+        db.suppliers,
+      )..where((t) => t.id.equals(supplierId))).getSingle();
+      expect(supplier.balance, 0);
+    });
+
+    test('rejects an unknown payment status and writes nothing', () async {
+      await expectLater(
+        repo.receiveStock(
+          supplierId: supplierId,
+          userId: userId,
+          items: [item(quantity: 10, total: 300)],
+          paymentStatus: 'overdue',
+          amountPaid: 0,
+        ),
+        throwsA(isA<InvalidPaymentStatusException>()),
+      );
+
+      final purchases = await repo.watchPurchases().first;
+      expect(purchases, isEmpty);
+    });
+  });
 }

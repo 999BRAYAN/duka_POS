@@ -9,3 +9,15 @@ class InvalidPurchaseStatusException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Thrown by [PurchaseRepository.receiveStock] when [paymentStatus] isn't
+/// one of the values Purchases.paymentStatus supports ('paid', 'partial',
+/// 'unpaid').
+class InvalidPaymentStatusException implements Exception {
+  const InvalidPaymentStatusException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}

@@ -7,6 +7,9 @@ class Suppliers extends Table {
   TextColumn get phone => text().nullable()();
   TextColumn get email => text().nullable()();
   TextColumn get address => text().nullable()();
+  // Outstanding amount owed to this supplier, accumulated by
+  // PurchaseRepository.receiveStock whenever a receipt isn't paid in full.
+  RealColumn get balance => real().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }

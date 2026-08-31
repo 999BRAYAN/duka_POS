@@ -53,4 +53,19 @@ void main() {
       returnsNormally,
     );
   });
+
+  test('admin and manager can receiveStock; cashier cannot', () {
+    expect(
+      AuthorizationService(_userWithRole('admin')).can(Permission.receiveStock),
+      isTrue,
+    );
+    expect(
+      AuthorizationService(_userWithRole('manager')).can(Permission.receiveStock),
+      isTrue,
+    );
+    expect(
+      AuthorizationService(_userWithRole('cashier')).can(Permission.receiveStock),
+      isFalse,
+    );
+  });
 }

@@ -16,6 +16,10 @@ class Purchases extends Table {
   RealColumn get amountPaid => real().withDefault(const Constant(0))();
   // pending, received, cancelled
   TextColumn get status => text().withDefault(const Constant('pending'))();
+  // paid, partial, unpaid — set by PurchaseRepository.receiveStock; the
+  // pending/markPurchaseReceived flow doesn't touch it.
+  TextColumn get paymentStatus =>
+      text().withDefault(const Constant('unpaid'))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }
