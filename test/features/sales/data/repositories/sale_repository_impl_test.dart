@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
 import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -12,7 +13,7 @@ void main() {
 
   setUp(() async {
     db = DukaDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
-    repo = SaleRepositoryImpl(db);
+    repo = SaleRepositoryImpl(db, StockMovementRepositoryImpl(db));
 
     final product = await db.into(db.products).insertReturning(
       ProductsCompanion.insert(

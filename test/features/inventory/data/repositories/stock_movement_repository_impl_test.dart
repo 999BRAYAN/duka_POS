@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
@@ -16,6 +17,7 @@ void main() {
       ProductsCompanion.insert(
         uuid: 'prod-1',
         name: 'Soda',
+        stock: const Value(10),
         createdAt: DateTime.now(),
       ),
     )).id;
@@ -35,6 +37,30 @@ void main() {
     expect(movements, hasLength(1));
     expect(movements.single.type, 'ADJUSTMENT');
     expect(movements.single.notes, 'Stock count correction');
+  });
+
+  test('recordMovement applies the signed quantity to Products.stock', () async {
+    await repo.recordMovement(productId: productId, type: 'ADJUSTMENT', quantity: 5);
+    var product = await (db.select(
+      db.products,
+    )..where((t) => t.id.equals(productId))).getSingle();
+    expect(product.stock, 15);
+
+    await repo.recordMovement(productId: productId, type: 'SALE', quantity: -3);
+    product = await (db.select(
+      db.products,
+    )..where((t) => t.id.equals(productId))).getSingle();
+    expect(product.stock, 12);
+  });
+
+  test('recordMovement persists unitCost when given', () async {
+    final movement = await repo.recordMovement(
+      productId: productId,
+      type: 'PURCHASE',
+      quantity: 5,
+      unitCost: 42.5,
+    );
+    expect(movement.unitCost, 42.5);
   });
 
   test('watchRecentMovements respects the limit and orders newest first', () async {

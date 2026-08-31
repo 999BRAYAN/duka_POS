@@ -103,25 +103,4 @@ class ProductRepositoryImpl implements ProductRepository {
         ))
         .watch();
   }
-
-  @override
-  Future<void> adjustStock({
-    required String productUuid,
-    required double quantityChange,
-  }) {
-    return _db.transaction(() async {
-      final product = await (_db.select(
-        _db.products,
-      )..where((t) => t.uuid.equals(productUuid))).getSingle();
-
-      await (_db.update(
-        _db.products,
-      )..where((t) => t.uuid.equals(productUuid))).write(
-        ProductsCompanion(
-          stock: Value(product.stock + quantityChange),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-    });
-  }
 }

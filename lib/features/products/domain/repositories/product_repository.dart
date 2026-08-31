@@ -1,7 +1,10 @@
 import 'package:duka_pos/core/database/database.dart';
 
-/// Contract for reading and writing [Product] rows. No implementation yet —
-/// this is the boundary that keeps Drift/SQL details out of the UI layer.
+/// Contract for reading and writing [Product] rows — deliberately has no
+/// stock-adjusting method. Stock changes go through
+/// StockMovementRepository.recordMovement (or InventoryService.adjustStock
+/// for a manual correction) instead, so every change to [Product.stock] is
+/// backed by a StockMovement audit row.
 abstract interface class ProductRepository {
   Future<Product> addProduct({
     required String name,
@@ -30,12 +33,4 @@ abstract interface class ProductRepository {
   Stream<List<Product>> watchProductsByCategory(int categoryId);
 
   Stream<List<Product>> watchLowStockProducts();
-
-  /// Applies a signed delta to a product's stock (positive to add, negative
-  /// to remove). Callers are expected to also write a matching
-  /// [StockMovement] via the inventory repository.
-  Future<void> adjustStock({
-    required String productUuid,
-    required double quantityChange,
-  });
 }

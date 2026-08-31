@@ -6,8 +6,8 @@ import 'permission.dart';
 /// Maps a signed-in [User]'s role to the [Permission]s it grants. Roles come
 /// from the `users.role` column (admin, manager, cashier — see UsersTable).
 const _rolePermissions = <String, Set<Permission>>{
-  'admin': {Permission.manageProducts},
-  'manager': {Permission.manageProducts},
+  'admin': {Permission.manageProducts, Permission.adjustStock},
+  'manager': {Permission.manageProducts, Permission.adjustStock},
   'cashier': <Permission>{},
 };
 

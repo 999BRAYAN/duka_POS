@@ -44,18 +44,6 @@ void main() {
     expect(results.map((p) => p.uuid), [low.uuid]);
   });
 
-  test('adjustStock applies a signed delta', () async {
-    final product = await addProduct(stock: 10);
-
-    await repo.adjustStock(productUuid: product.uuid, quantityChange: -3);
-    var updated = await repo.getProductByUuid(product.uuid);
-    expect(updated?.stock, 7);
-
-    await repo.adjustStock(productUuid: product.uuid, quantityChange: 5);
-    updated = await repo.getProductByUuid(product.uuid);
-    expect(updated?.stock, 12);
-  });
-
   test('getProductByBarcode finds a matching product', () async {
     await repo.addProduct(
       name: 'Bread',

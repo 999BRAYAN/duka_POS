@@ -1,15 +1,19 @@
 import 'package:drift/drift.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/inventory/domain/repositories/stock_movement_repository.dart';
 import 'package:duka_pos/features/sales/domain/repositories/sale_repository.dart';
 import 'package:uuid/uuid.dart';
 
 /// Stock movement quantities are stored as the signed delta applied to the
 /// product's stock: negative for a sale (stock leaving), positive for a
-/// void/return (stock coming back).
+/// void/return (stock coming back). Actual stock changes go through
+/// [StockMovementRepository.recordMovement] rather than writing
+/// `products.stock` here — see that repository's class doc.
 class SaleRepositoryImpl implements SaleRepository {
-  SaleRepositoryImpl(this._db);
+  SaleRepositoryImpl(this._db, this._stockMovements);
 
   final DukaDatabase _db;
+  final StockMovementRepository _stockMovements;
   static const _uuid = Uuid();
 
   @override
@@ -58,25 +62,14 @@ class SaleRepositoryImpl implements SaleRepository {
         final product = await (_db.select(
           _db.products,
         )..where((t) => t.id.equals(productId))).getSingle();
-        await (_db.update(
-          _db.products,
-        )..where((t) => t.id.equals(productId))).write(
-          ProductsCompanion(
-            stock: Value(product.stock - quantity),
-            updatedAt: Value(now),
-          ),
-        );
 
-        await _db.into(_db.stockMovements).insert(
-          StockMovementsCompanion.insert(
-            uuid: _uuid.v4(),
-            productId: productId,
-            type: 'SALE',
-            quantity: -quantity,
-            reference: Value(sale.uuid),
-            userId: Value(userId),
-            createdAt: now,
-          ),
+        await _stockMovements.recordMovement(
+          productId: productId,
+          type: 'SALE',
+          quantity: -quantity,
+          unitCost: product.costPrice,
+          reference: sale.uuid,
+          userId: userId,
         );
       }
 
@@ -100,24 +93,13 @@ class SaleRepositoryImpl implements SaleRepository {
         final product = await (_db.select(
           _db.products,
         )..where((t) => t.id.equals(item.productId))).getSingle();
-        await (_db.update(
-          _db.products,
-        )..where((t) => t.id.equals(item.productId))).write(
-          ProductsCompanion(
-            stock: Value(product.stock + item.quantity),
-            updatedAt: Value(now),
-          ),
-        );
 
-        await _db.into(_db.stockMovements).insert(
-          StockMovementsCompanion.insert(
-            uuid: _uuid.v4(),
-            productId: item.productId,
-            type: 'RETURN',
-            quantity: item.quantity,
-            reference: Value(sale.uuid),
-            createdAt: now,
-          ),
+        await _stockMovements.recordMovement(
+          productId: item.productId,
+          type: 'RETURN',
+          quantity: item.quantity,
+          unitCost: product.costPrice,
+          reference: sale.uuid,
         );
       }
 

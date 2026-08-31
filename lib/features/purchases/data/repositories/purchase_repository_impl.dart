@@ -1,13 +1,18 @@
 import 'package:drift/drift.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/inventory/domain/repositories/stock_movement_repository.dart';
 import 'package:duka_pos/features/purchases/domain/exceptions.dart';
 import 'package:duka_pos/features/purchases/domain/repositories/purchase_repository.dart';
 import 'package:uuid/uuid.dart';
 
+/// Actual stock changes go through [StockMovementRepository.recordMovement]
+/// rather than writing `products.stock` here — see that repository's class
+/// doc.
 class PurchaseRepositoryImpl implements PurchaseRepository {
-  PurchaseRepositoryImpl(this._db);
+  PurchaseRepositoryImpl(this._db, this._stockMovements);
 
   final DukaDatabase _db;
+  final StockMovementRepository _stockMovements;
   static const _uuid = Uuid();
 
   @override
@@ -71,27 +76,13 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
       )..where((t) => t.purchaseId.equals(purchase.id))).get();
 
       for (final item in items) {
-        final product = await (_db.select(
-          _db.products,
-        )..where((t) => t.id.equals(item.productId))).getSingle();
-        await (_db.update(
-          _db.products,
-        )..where((t) => t.id.equals(item.productId))).write(
-          ProductsCompanion(
-            stock: Value(product.stock + item.quantity),
-            updatedAt: Value(now),
-          ),
-        );
-
-        await _db.into(_db.stockMovements).insert(
-          StockMovementsCompanion.insert(
-            uuid: _uuid.v4(),
-            productId: item.productId,
-            type: 'PURCHASE',
-            quantity: item.quantity,
-            reference: Value(purchase.uuid),
-            createdAt: now,
-          ),
+        await _stockMovements.recordMovement(
+          productId: item.productId,
+          type: 'PURCHASE',
+          quantity: item.quantity,
+          unitCost: item.unitCost,
+          reference: purchase.uuid,
+          userId: purchase.userId,
         );
       }
 

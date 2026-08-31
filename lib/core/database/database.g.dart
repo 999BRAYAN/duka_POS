@@ -3009,6 +3009,17 @@ class $StockMovementsTable extends StockMovements
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _unitCostMeta = const VerificationMeta(
+    'unitCost',
+  );
+  @override
+  late final GeneratedColumn<double> unitCost = GeneratedColumn<double>(
+    'unit_cost',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _referenceMeta = const VerificationMeta(
     'reference',
   );
@@ -3070,6 +3081,7 @@ class $StockMovementsTable extends StockMovements
     productId,
     type,
     quantity,
+    unitCost,
     reference,
     notes,
     userId,
@@ -3122,6 +3134,12 @@ class $StockMovementsTable extends StockMovements
       );
     } else if (isInserting) {
       context.missing(_quantityMeta);
+    }
+    if (data.containsKey('unit_cost')) {
+      context.handle(
+        _unitCostMeta,
+        unitCost.isAcceptableOrUnknown(data['unit_cost']!, _unitCostMeta),
+      );
     }
     if (data.containsKey('reference')) {
       context.handle(
@@ -3184,6 +3202,10 @@ class $StockMovementsTable extends StockMovements
         DriftSqlType.double,
         data['${effectivePrefix}quantity'],
       )!,
+      unitCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}unit_cost'],
+      ),
       reference: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reference'],
@@ -3219,6 +3241,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
   final int productId;
   final String type;
   final double quantity;
+  final double? unitCost;
   final String? reference;
   final String? notes;
   final int? userId;
@@ -3230,6 +3253,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
     required this.productId,
     required this.type,
     required this.quantity,
+    this.unitCost,
     this.reference,
     this.notes,
     this.userId,
@@ -3244,6 +3268,9 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
     map['product_id'] = Variable<int>(productId);
     map['type'] = Variable<String>(type);
     map['quantity'] = Variable<double>(quantity);
+    if (!nullToAbsent || unitCost != null) {
+      map['unit_cost'] = Variable<double>(unitCost);
+    }
     if (!nullToAbsent || reference != null) {
       map['reference'] = Variable<String>(reference);
     }
@@ -3267,6 +3294,9 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
       productId: Value(productId),
       type: Value(type),
       quantity: Value(quantity),
+      unitCost: unitCost == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitCost),
       reference: reference == null && nullToAbsent
           ? const Value.absent()
           : Value(reference),
@@ -3294,6 +3324,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
       productId: serializer.fromJson<int>(json['productId']),
       type: serializer.fromJson<String>(json['type']),
       quantity: serializer.fromJson<double>(json['quantity']),
+      unitCost: serializer.fromJson<double?>(json['unitCost']),
       reference: serializer.fromJson<String?>(json['reference']),
       notes: serializer.fromJson<String?>(json['notes']),
       userId: serializer.fromJson<int?>(json['userId']),
@@ -3310,6 +3341,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
       'productId': serializer.toJson<int>(productId),
       'type': serializer.toJson<String>(type),
       'quantity': serializer.toJson<double>(quantity),
+      'unitCost': serializer.toJson<double?>(unitCost),
       'reference': serializer.toJson<String?>(reference),
       'notes': serializer.toJson<String?>(notes),
       'userId': serializer.toJson<int?>(userId),
@@ -3324,6 +3356,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
     int? productId,
     String? type,
     double? quantity,
+    Value<double?> unitCost = const Value.absent(),
     Value<String?> reference = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     Value<int?> userId = const Value.absent(),
@@ -3335,6 +3368,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
     productId: productId ?? this.productId,
     type: type ?? this.type,
     quantity: quantity ?? this.quantity,
+    unitCost: unitCost.present ? unitCost.value : this.unitCost,
     reference: reference.present ? reference.value : this.reference,
     notes: notes.present ? notes.value : this.notes,
     userId: userId.present ? userId.value : this.userId,
@@ -3348,6 +3382,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
       productId: data.productId.present ? data.productId.value : this.productId,
       type: data.type.present ? data.type.value : this.type,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
       reference: data.reference.present ? data.reference.value : this.reference,
       notes: data.notes.present ? data.notes.value : this.notes,
       userId: data.userId.present ? data.userId.value : this.userId,
@@ -3364,6 +3399,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
           ..write('productId: $productId, ')
           ..write('type: $type, ')
           ..write('quantity: $quantity, ')
+          ..write('unitCost: $unitCost, ')
           ..write('reference: $reference, ')
           ..write('notes: $notes, ')
           ..write('userId: $userId, ')
@@ -3380,6 +3416,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
     productId,
     type,
     quantity,
+    unitCost,
     reference,
     notes,
     userId,
@@ -3395,6 +3432,7 @@ class StockMovement extends DataClass implements Insertable<StockMovement> {
           other.productId == this.productId &&
           other.type == this.type &&
           other.quantity == this.quantity &&
+          other.unitCost == this.unitCost &&
           other.reference == this.reference &&
           other.notes == this.notes &&
           other.userId == this.userId &&
@@ -3408,6 +3446,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
   final Value<int> productId;
   final Value<String> type;
   final Value<double> quantity;
+  final Value<double?> unitCost;
   final Value<String?> reference;
   final Value<String?> notes;
   final Value<int?> userId;
@@ -3419,6 +3458,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
     this.productId = const Value.absent(),
     this.type = const Value.absent(),
     this.quantity = const Value.absent(),
+    this.unitCost = const Value.absent(),
     this.reference = const Value.absent(),
     this.notes = const Value.absent(),
     this.userId = const Value.absent(),
@@ -3431,6 +3471,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
     required int productId,
     required String type,
     required double quantity,
+    this.unitCost = const Value.absent(),
     this.reference = const Value.absent(),
     this.notes = const Value.absent(),
     this.userId = const Value.absent(),
@@ -3447,6 +3488,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
     Expression<int>? productId,
     Expression<String>? type,
     Expression<double>? quantity,
+    Expression<double>? unitCost,
     Expression<String>? reference,
     Expression<String>? notes,
     Expression<int>? userId,
@@ -3459,6 +3501,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
       if (productId != null) 'product_id': productId,
       if (type != null) 'type': type,
       if (quantity != null) 'quantity': quantity,
+      if (unitCost != null) 'unit_cost': unitCost,
       if (reference != null) 'reference': reference,
       if (notes != null) 'notes': notes,
       if (userId != null) 'user_id': userId,
@@ -3473,6 +3516,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
     Value<int>? productId,
     Value<String>? type,
     Value<double>? quantity,
+    Value<double?>? unitCost,
     Value<String?>? reference,
     Value<String?>? notes,
     Value<int?>? userId,
@@ -3485,6 +3529,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
       productId: productId ?? this.productId,
       type: type ?? this.type,
       quantity: quantity ?? this.quantity,
+      unitCost: unitCost ?? this.unitCost,
       reference: reference ?? this.reference,
       notes: notes ?? this.notes,
       userId: userId ?? this.userId,
@@ -3510,6 +3555,9 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
     }
     if (quantity.present) {
       map['quantity'] = Variable<double>(quantity.value);
+    }
+    if (unitCost.present) {
+      map['unit_cost'] = Variable<double>(unitCost.value);
     }
     if (reference.present) {
       map['reference'] = Variable<String>(reference.value);
@@ -3537,6 +3585,7 @@ class StockMovementsCompanion extends UpdateCompanion<StockMovement> {
           ..write('productId: $productId, ')
           ..write('type: $type, ')
           ..write('quantity: $quantity, ')
+          ..write('unitCost: $unitCost, ')
           ..write('reference: $reference, ')
           ..write('notes: $notes, ')
           ..write('userId: $userId, ')
@@ -10020,6 +10069,7 @@ typedef $$StockMovementsTableCreateCompanionBuilder =
       required int productId,
       required String type,
       required double quantity,
+      Value<double?> unitCost,
       Value<String?> reference,
       Value<String?> notes,
       Value<int?> userId,
@@ -10033,6 +10083,7 @@ typedef $$StockMovementsTableUpdateCompanionBuilder =
       Value<int> productId,
       Value<String> type,
       Value<double> quantity,
+      Value<double?> unitCost,
       Value<String?> reference,
       Value<String?> notes,
       Value<int?> userId,
@@ -10113,6 +10164,11 @@ class $$StockMovementsTableFilterComposer
 
   ColumnFilters<double> get quantity => $composableBuilder(
     column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get unitCost => $composableBuilder(
+    column: $table.unitCost,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10212,6 +10268,11 @@ class $$StockMovementsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get reference => $composableBuilder(
     column: $table.reference,
     builder: (column) => ColumnOrderings(column),
@@ -10299,6 +10360,9 @@ class $$StockMovementsTableAnnotationComposer
 
   GeneratedColumn<double> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<double> get unitCost =>
+      $composableBuilder(column: $table.unitCost, builder: (column) => column);
 
   GeneratedColumn<String> get reference =>
       $composableBuilder(column: $table.reference, builder: (column) => column);
@@ -10394,6 +10458,7 @@ class $$StockMovementsTableTableManager
                 Value<int> productId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<double> quantity = const Value.absent(),
+                Value<double?> unitCost = const Value.absent(),
                 Value<String?> reference = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<int?> userId = const Value.absent(),
@@ -10405,6 +10470,7 @@ class $$StockMovementsTableTableManager
                 productId: productId,
                 type: type,
                 quantity: quantity,
+                unitCost: unitCost,
                 reference: reference,
                 notes: notes,
                 userId: userId,
@@ -10418,6 +10484,7 @@ class $$StockMovementsTableTableManager
                 required int productId,
                 required String type,
                 required double quantity,
+                Value<double?> unitCost = const Value.absent(),
                 Value<String?> reference = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<int?> userId = const Value.absent(),
@@ -10429,6 +10496,7 @@ class $$StockMovementsTableTableManager
                 productId: productId,
                 type: type,
                 quantity: quantity,
+                unitCost: unitCost,
                 reference: reference,
                 notes: notes,
                 userId: userId,

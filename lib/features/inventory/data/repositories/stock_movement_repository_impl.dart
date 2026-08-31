@@ -14,22 +14,47 @@ class StockMovementRepositoryImpl implements StockMovementRepository {
     required int productId,
     required String type,
     required double quantity,
+    double? unitCost,
     String? reference,
     String? notes,
     int? userId,
   }) {
-    return _db.into(_db.stockMovements).insertReturning(
-      StockMovementsCompanion.insert(
-        uuid: _uuid.v4(),
-        productId: productId,
-        type: type,
-        quantity: quantity,
-        reference: Value(reference),
-        notes: Value(notes),
-        userId: Value(userId),
-        createdAt: DateTime.now(),
-      ),
-    );
+    // Insert + stock update happen in one transaction so a product's stock
+    // and its audit trail can never drift apart. Other repositories that
+    // share this `_db` instance (Sale/Purchase) call this from inside their
+    // own `_db.transaction()` — drift keeps a single transaction active per
+    // zone regardless of which repository object issues the query, so this
+    // still participates in their outer transaction rather than starting a
+    // nested one.
+    return _db.transaction(() async {
+      final now = DateTime.now();
+      final product = await (_db.select(
+        _db.products,
+      )..where((t) => t.id.equals(productId))).getSingle();
+
+      await (_db.update(
+        _db.products,
+      )..where((t) => t.id.equals(productId))).write(
+        ProductsCompanion(
+          stock: Value(product.stock + quantity),
+          updatedAt: Value(now),
+        ),
+      );
+
+      return _db.into(_db.stockMovements).insertReturning(
+        StockMovementsCompanion.insert(
+          uuid: _uuid.v4(),
+          productId: productId,
+          type: type,
+          quantity: quantity,
+          unitCost: Value(unitCost),
+          reference: Value(reference),
+          notes: Value(notes),
+          userId: Value(userId),
+          createdAt: now,
+        ),
+      );
+    });
   }
 
   @override

@@ -15,6 +15,10 @@ class Products extends Table {
   RealColumn get costPrice => real().withDefault(const Constant(0))();
   RealColumn get sellingPrice => real().withDefault(const Constant(0))();
   RealColumn get minSellingPrice => real().withDefault(const Constant(0))();
+  // Never written directly outside StockMovementRepository.recordMovement —
+  // that's the only path allowed to change this column, so every change is
+  // backed by an audit-trail row in StockMovements. See that repository's
+  // class doc before adding another writer.
   RealColumn get stock => real().withDefault(const Constant(0))();
   RealColumn get reorderLevel => real().withDefault(const Constant(0))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();

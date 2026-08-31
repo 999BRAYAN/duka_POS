@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
 import 'package:duka_pos/features/purchases/data/repositories/purchase_repository_impl.dart';
 import 'package:duka_pos/features/purchases/domain/exceptions.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +15,7 @@ void main() {
 
   setUp(() async {
     db = DukaDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
-    repo = PurchaseRepositoryImpl(db);
+    repo = PurchaseRepositoryImpl(db, StockMovementRepositoryImpl(db));
 
     productId = (await db.into(db.products).insertReturning(
       ProductsCompanion.insert(
@@ -97,6 +98,8 @@ void main() {
     )..where((t) => t.productId.equals(productId))).get();
     expect(movements.single.type, 'PURCHASE');
     expect(movements.single.quantity, 10);
+    expect(movements.single.unitCost, 30);
+    expect(movements.single.userId, userId);
   });
 
   test('markPurchaseReceived twice throws InvalidPurchaseStatusException', () async {

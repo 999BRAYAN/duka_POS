@@ -10,6 +10,10 @@ class StockMovements extends Table {
   // IN, OUT, ADJUSTMENT, SALE, PURCHASE, RETURN
   TextColumn get type => text()();
   RealColumn get quantity => real()();
+  // Cost per unit at the time of this movement (e.g. PurchaseItem.unitCost
+  // for a PURCHASE, Product.costPrice for a SALE/RETURN) — nullable because
+  // it isn't always known (e.g. a plain stock-count ADJUSTMENT).
+  RealColumn get unitCost => real().nullable()();
   TextColumn get reference => text().nullable()();
   TextColumn get notes => text().nullable()();
   IntColumn get userId => integer().nullable().references(Users, #id)();
