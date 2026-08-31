@@ -17,6 +17,12 @@ class Sales extends Table {
   RealColumn get amountPaid => real().withDefault(const Constant(0))();
   // cash, mpesa, card, credit
   TextColumn get paymentMethod => text()();
+  // Cost of goods sold and gross profit, computed once from each line's
+  // unitCost-at-sale-time (SaleRepository.completeSale) and persisted here
+  // rather than recomputed later — later cost/price changes shouldn't
+  // rewrite the profit on a sale that already happened.
+  RealColumn get cogs => real().withDefault(const Constant(0))();
+  RealColumn get grossProfit => real().withDefault(const Constant(0))();
   // completed, void, refunded
   TextColumn get status => text().withDefault(const Constant('completed'))();
   DateTimeColumn get createdAt => dateTime()();

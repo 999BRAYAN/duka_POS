@@ -1,4 +1,5 @@
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/sales/domain/models/cart_line.dart';
 
 /// Contract for creating and reading sales together with their line items.
 abstract interface class SaleRepository {
@@ -21,6 +22,43 @@ abstract interface class SaleRepository {
     double tax,
     required String paymentMethod,
     double amountPaid,
+  });
+
+  /// The cart-checkout path: builds a sale straight from a [CartLine] list
+  /// in one transaction, re-checking everything at this moment rather than
+  /// trusting anything the cart captured when lines were added —
+  /// - current stock per line (another sale could have taken the last unit
+  ///   since the cart was built; throws InsufficientStockException),
+  /// - the same minSellingPrice floor check as [createSale], applied to the
+  ///   cart's lines with [discount] allocated proportionally (throws
+  ///   PriceBelowFloorException),
+  /// - and, for paymentMethod 'credit', that the resulting balance doesn't
+  ///   exceed the customer's creditLimit (throws
+  ///   CreditLimitExceededException) unless [overrideCreditLimit] is set —
+  ///   that flag exists now so the API shape is stable, but there's no
+  ///   audit trail or extra authorization on its use yet; that's future
+  ///   work, not part of this method.
+  ///
+  /// Each line's cost is snapshotted from the product's current costPrice
+  /// at this moment (not any earlier value) when recording its
+  /// StockMovementRepository.recordMovement call, and those snapshots are
+  /// summed into the returned Sale's cogs/grossProfit. The sale's
+  /// invoiceNumber is generated inside this same transaction as a gapless
+  /// sequence (a count of every sale ever created, void or not), so two
+  /// near-simultaneous calls can't collide or skip a number.
+  ///
+  /// paymentMethod 'credit' with no [customerId] throws
+  /// CustomerRequiredForCreditException. If there's a customer and a
+  /// balance due (total minus [amountPaid], for any payment method), that
+  /// shortfall is added to Customers.balance.
+  Future<Sale> completeSale({
+    required List<CartLine> cart,
+    int? customerId,
+    required int userId,
+    required String paymentMethod,
+    double amountPaid,
+    double discount,
+    bool overrideCreditLimit,
   });
 
   Future<void> voidSale(String uuid);

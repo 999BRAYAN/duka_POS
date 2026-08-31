@@ -68,4 +68,14 @@ void main() {
       isFalse,
     );
   });
+
+  test('every role can processSale, including cashier', () {
+    for (final role in ['admin', 'manager', 'cashier']) {
+      expect(
+        AuthorizationService(_userWithRole(role)).can(Permission.processSale),
+        isTrue,
+        reason: '$role should be able to processSale',
+      );
+    }
+  });
 }

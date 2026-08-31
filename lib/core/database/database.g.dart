@@ -3783,6 +3783,28 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _cogsMeta = const VerificationMeta('cogs');
+  @override
+  late final GeneratedColumn<double> cogs = GeneratedColumn<double>(
+    'cogs',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _grossProfitMeta = const VerificationMeta(
+    'grossProfit',
+  );
+  @override
+  late final GeneratedColumn<double> grossProfit = GeneratedColumn<double>(
+    'gross_profit',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -3828,6 +3850,8 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
     total,
     amountPaid,
     paymentMethod,
+    cogs,
+    grossProfit,
     status,
     createdAt,
     updatedAt,
@@ -3921,6 +3945,21 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
     } else if (isInserting) {
       context.missing(_paymentMethodMeta);
     }
+    if (data.containsKey('cogs')) {
+      context.handle(
+        _cogsMeta,
+        cogs.isAcceptableOrUnknown(data['cogs']!, _cogsMeta),
+      );
+    }
+    if (data.containsKey('gross_profit')) {
+      context.handle(
+        _grossProfitMeta,
+        grossProfit.isAcceptableOrUnknown(
+          data['gross_profit']!,
+          _grossProfitMeta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -3994,6 +4033,14 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
         DriftSqlType.string,
         data['${effectivePrefix}payment_method'],
       )!,
+      cogs: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cogs'],
+      )!,
+      grossProfit: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}gross_profit'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -4027,6 +4074,8 @@ class Sale extends DataClass implements Insertable<Sale> {
   final double total;
   final double amountPaid;
   final String paymentMethod;
+  final double cogs;
+  final double grossProfit;
   final String status;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -4042,6 +4091,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     required this.total,
     required this.amountPaid,
     required this.paymentMethod,
+    required this.cogs,
+    required this.grossProfit,
     required this.status,
     required this.createdAt,
     this.updatedAt,
@@ -4062,6 +4113,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     map['total'] = Variable<double>(total);
     map['amount_paid'] = Variable<double>(amountPaid);
     map['payment_method'] = Variable<String>(paymentMethod);
+    map['cogs'] = Variable<double>(cogs);
+    map['gross_profit'] = Variable<double>(grossProfit);
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || updatedAt != null) {
@@ -4085,6 +4138,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       total: Value(total),
       amountPaid: Value(amountPaid),
       paymentMethod: Value(paymentMethod),
+      cogs: Value(cogs),
+      grossProfit: Value(grossProfit),
       status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
@@ -4110,6 +4165,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       total: serializer.fromJson<double>(json['total']),
       amountPaid: serializer.fromJson<double>(json['amountPaid']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
+      cogs: serializer.fromJson<double>(json['cogs']),
+      grossProfit: serializer.fromJson<double>(json['grossProfit']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -4130,6 +4187,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       'total': serializer.toJson<double>(total),
       'amountPaid': serializer.toJson<double>(amountPaid),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
+      'cogs': serializer.toJson<double>(cogs),
+      'grossProfit': serializer.toJson<double>(grossProfit),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -4148,6 +4207,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     double? total,
     double? amountPaid,
     String? paymentMethod,
+    double? cogs,
+    double? grossProfit,
     String? status,
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -4163,6 +4224,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     total: total ?? this.total,
     amountPaid: amountPaid ?? this.amountPaid,
     paymentMethod: paymentMethod ?? this.paymentMethod,
+    cogs: cogs ?? this.cogs,
+    grossProfit: grossProfit ?? this.grossProfit,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -4188,6 +4251,10 @@ class Sale extends DataClass implements Insertable<Sale> {
       paymentMethod: data.paymentMethod.present
           ? data.paymentMethod.value
           : this.paymentMethod,
+      cogs: data.cogs.present ? data.cogs.value : this.cogs,
+      grossProfit: data.grossProfit.present
+          ? data.grossProfit.value
+          : this.grossProfit,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -4208,6 +4275,8 @@ class Sale extends DataClass implements Insertable<Sale> {
           ..write('total: $total, ')
           ..write('amountPaid: $amountPaid, ')
           ..write('paymentMethod: $paymentMethod, ')
+          ..write('cogs: $cogs, ')
+          ..write('grossProfit: $grossProfit, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -4228,6 +4297,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     total,
     amountPaid,
     paymentMethod,
+    cogs,
+    grossProfit,
     status,
     createdAt,
     updatedAt,
@@ -4247,6 +4318,8 @@ class Sale extends DataClass implements Insertable<Sale> {
           other.total == this.total &&
           other.amountPaid == this.amountPaid &&
           other.paymentMethod == this.paymentMethod &&
+          other.cogs == this.cogs &&
+          other.grossProfit == this.grossProfit &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -4264,6 +4337,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
   final Value<double> total;
   final Value<double> amountPaid;
   final Value<String> paymentMethod;
+  final Value<double> cogs;
+  final Value<double> grossProfit;
   final Value<String> status;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
@@ -4279,6 +4354,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     this.total = const Value.absent(),
     this.amountPaid = const Value.absent(),
     this.paymentMethod = const Value.absent(),
+    this.cogs = const Value.absent(),
+    this.grossProfit = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4295,6 +4372,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     this.total = const Value.absent(),
     this.amountPaid = const Value.absent(),
     required String paymentMethod,
+    this.cogs = const Value.absent(),
+    this.grossProfit = const Value.absent(),
     this.status = const Value.absent(),
     required DateTime createdAt,
     this.updatedAt = const Value.absent(),
@@ -4315,6 +4394,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     Expression<double>? total,
     Expression<double>? amountPaid,
     Expression<String>? paymentMethod,
+    Expression<double>? cogs,
+    Expression<double>? grossProfit,
     Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -4331,6 +4412,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       if (total != null) 'total': total,
       if (amountPaid != null) 'amount_paid': amountPaid,
       if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (cogs != null) 'cogs': cogs,
+      if (grossProfit != null) 'gross_profit': grossProfit,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4349,6 +4432,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     Value<double>? total,
     Value<double>? amountPaid,
     Value<String>? paymentMethod,
+    Value<double>? cogs,
+    Value<double>? grossProfit,
     Value<String>? status,
     Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -4365,6 +4450,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       total: total ?? this.total,
       amountPaid: amountPaid ?? this.amountPaid,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      cogs: cogs ?? this.cogs,
+      grossProfit: grossProfit ?? this.grossProfit,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4407,6 +4494,12 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     if (paymentMethod.present) {
       map['payment_method'] = Variable<String>(paymentMethod.value);
     }
+    if (cogs.present) {
+      map['cogs'] = Variable<double>(cogs.value);
+    }
+    if (grossProfit.present) {
+      map['gross_profit'] = Variable<double>(grossProfit.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -4433,6 +4526,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
           ..write('total: $total, ')
           ..write('amountPaid: $amountPaid, ')
           ..write('paymentMethod: $paymentMethod, ')
+          ..write('cogs: $cogs, ')
+          ..write('grossProfit: $grossProfit, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -10722,6 +10817,8 @@ typedef $$SalesTableCreateCompanionBuilder =
       Value<double> total,
       Value<double> amountPaid,
       required String paymentMethod,
+      Value<double> cogs,
+      Value<double> grossProfit,
       Value<String> status,
       required DateTime createdAt,
       Value<DateTime?> updatedAt,
@@ -10739,6 +10836,8 @@ typedef $$SalesTableUpdateCompanionBuilder =
       Value<double> total,
       Value<double> amountPaid,
       Value<String> paymentMethod,
+      Value<double> cogs,
+      Value<double> grossProfit,
       Value<String> status,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
@@ -10875,6 +10974,16 @@ class $$SalesTableFilterComposer extends Composer<_$DukaDatabase, $SalesTable> {
 
   ColumnFilters<String> get paymentMethod => $composableBuilder(
     column: $table.paymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get cogs => $composableBuilder(
+    column: $table.cogs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get grossProfit => $composableBuilder(
+    column: $table.grossProfit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11044,6 +11153,16 @@ class $$SalesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get cogs => $composableBuilder(
+    column: $table.cogs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get grossProfit => $composableBuilder(
+    column: $table.grossProfit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -11145,6 +11264,14 @@ class $$SalesTableAnnotationComposer
 
   GeneratedColumn<String> get paymentMethod => $composableBuilder(
     column: $table.paymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get cogs =>
+      $composableBuilder(column: $table.cogs, builder: (column) => column);
+
+  GeneratedColumn<double> get grossProfit => $composableBuilder(
+    column: $table.grossProfit,
     builder: (column) => column,
   );
 
@@ -11299,6 +11426,8 @@ class $$SalesTableTableManager
                 Value<double> total = const Value.absent(),
                 Value<double> amountPaid = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
+                Value<double> cogs = const Value.absent(),
+                Value<double> grossProfit = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -11314,6 +11443,8 @@ class $$SalesTableTableManager
                 total: total,
                 amountPaid: amountPaid,
                 paymentMethod: paymentMethod,
+                cogs: cogs,
+                grossProfit: grossProfit,
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -11331,6 +11462,8 @@ class $$SalesTableTableManager
                 Value<double> total = const Value.absent(),
                 Value<double> amountPaid = const Value.absent(),
                 required String paymentMethod,
+                Value<double> cogs = const Value.absent(),
+                Value<double> grossProfit = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -11346,6 +11479,8 @@ class $$SalesTableTableManager
                 total: total,
                 amountPaid: amountPaid,
                 paymentMethod: paymentMethod,
+                cogs: cogs,
+                grossProfit: grossProfit,
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

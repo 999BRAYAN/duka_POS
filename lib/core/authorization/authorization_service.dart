@@ -10,13 +10,17 @@ const _rolePermissions = <String, Set<Permission>>{
     Permission.manageProducts,
     Permission.adjustStock,
     Permission.receiveStock,
+    Permission.processSale,
   },
   'manager': {
     Permission.manageProducts,
     Permission.adjustStock,
     Permission.receiveStock,
+    Permission.processSale,
   },
-  'cashier': <Permission>{},
+  // Cashiers can't touch the catalog, inventory, or purchasing, but
+  // ringing up a sale is their job — this is the one permission they hold.
+  'cashier': {Permission.processSale},
 };
 
 /// Checks whether the current user is allowed to perform a given action.

@@ -4,6 +4,7 @@ import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
 import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
 import 'package:duka_pos/features/sales/domain/exceptions.dart';
+import 'package:duka_pos/features/sales/domain/models/cart_line.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -282,6 +283,205 @@ void main() {
       expect(sale.total, 210); // 300 - 90
       final movements = await db.select(db.stockMovements).get();
       expect(movements, hasLength(2));
+    });
+  });
+
+  group('completeSale', () {
+    Future<int> addProduct(
+      String name, {
+      double stock = 50,
+      double costPrice = 0,
+      double minSellingPrice = 0,
+    }) async {
+      final product = await db.into(db.products).insertReturning(
+        ProductsCompanion.insert(
+          uuid: 'prod-$name',
+          name: name,
+          stock: Value(stock),
+          costPrice: Value(costPrice),
+          minSellingPrice: Value(minSellingPrice),
+          createdAt: DateTime.now(),
+        ),
+      );
+      return product.id;
+    }
+
+    Future<int> addCustomer(
+      String name, {
+      double creditLimit = 0,
+      double currentBalance = 0,
+    }) async {
+      final customer = await db.into(db.customers).insertReturning(
+        CustomersCompanion.insert(
+          uuid: 'cust-$name',
+          name: name,
+          creditLimit: Value(creditLimit),
+          currentBalance: Value(currentBalance),
+          createdAt: DateTime.now(),
+        ),
+      );
+      return customer.id;
+    }
+
+    test('happy path: decrements stock, records a SALE movement, computes cogs/grossProfit', () async {
+      final sodaId = await addProduct('Soda', stock: 20, costPrice: 40);
+
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 3)],
+        userId: userId,
+        paymentMethod: 'cash',
+        amountPaid: 210,
+      );
+
+      expect(sale.invoiceNumber, 'INV-000001');
+      expect(sale.subtotal, 210);
+      expect(sale.total, 210);
+      expect(sale.cogs, 120); // 3 * 40
+      expect(sale.grossProfit, 90); // 210 - 120
+
+      final product = await (db.select(
+        db.products,
+      )..where((t) => t.id.equals(sodaId))).getSingle();
+      expect(product.stock, 17);
+
+      final movements = await (db.select(
+        db.stockMovements,
+      )..where((t) => t.productId.equals(sodaId))).get();
+      expect(movements.single.type, 'SALE');
+      expect(movements.single.quantity, -3);
+      expect(movements.single.unitCost, 40);
+    });
+
+    test('receipt numbers are gapless and sequential across calls', () async {
+      final sodaId = await addProduct('Soda', stock: 20);
+
+      final first = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+        userId: userId,
+        paymentMethod: 'cash',
+        amountPaid: 70,
+      );
+      final second = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+        userId: userId,
+        paymentMethod: 'cash',
+        amountPaid: 70,
+      );
+
+      expect(first.invoiceNumber, 'INV-000001');
+      expect(second.invoiceNumber, 'INV-000002');
+    });
+
+    test('rejects a cart line that exceeds current stock and writes nothing', () async {
+      final sodaId = await addProduct('Soda', stock: 2);
+
+      await expectLater(
+        repo.completeSale(
+          cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 5)],
+          userId: userId,
+          paymentMethod: 'cash',
+          amountPaid: 350,
+        ),
+        throwsA(isA<InsufficientStockException>()),
+      );
+
+      expect(await repo.watchSales().first, isEmpty);
+      final product = await (db.select(
+        db.products,
+      )..where((t) => t.id.equals(sodaId))).getSingle();
+      expect(product.stock, 2);
+    });
+
+    test('rejects a line priced below its minSellingPrice', () async {
+      final capId = await addProduct('Bottle Cap', stock: 10, minSellingPrice: 60);
+
+      await expectLater(
+        repo.completeSale(
+          cart: [CartLine(productId: capId, name: 'Bottle Cap', price: 50, quantity: 1)],
+          userId: userId,
+          paymentMethod: 'cash',
+          amountPaid: 50,
+        ),
+        throwsA(isA<PriceBelowFloorException>()),
+      );
+    });
+
+    test('credit sale with no customer is rejected', () async {
+      final sodaId = await addProduct('Soda', stock: 10);
+
+      await expectLater(
+        repo.completeSale(
+          cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+          userId: userId,
+          paymentMethod: 'credit',
+        ),
+        throwsA(isA<CustomerRequiredForCreditException>()),
+      );
+    });
+
+    test('credit sale that would exceed the customer\'s credit limit is rejected', () async {
+      final sodaId = await addProduct('Soda', stock: 10);
+      final customerId = await addCustomer('Jane', creditLimit: 100, currentBalance: 80);
+
+      await expectLater(
+        repo.completeSale(
+          cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+          customerId: customerId,
+          userId: userId,
+          paymentMethod: 'credit',
+        ),
+        throwsA(isA<CreditLimitExceededException>()),
+      );
+
+      expect(await repo.watchSales().first, isEmpty);
+      final customer = await (db.select(
+        db.customers,
+      )..where((t) => t.id.equals(customerId))).getSingle();
+      expect(customer.currentBalance, 80); // unchanged
+    });
+
+    test('overrideCreditLimit bypasses the limit check', () async {
+      final sodaId = await addProduct('Soda', stock: 10);
+      final customerId = await addCustomer('Jane', creditLimit: 100, currentBalance: 80);
+
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        overrideCreditLimit: true,
+      );
+
+      expect(sale.total, 70);
+      final customer = await (db.select(
+        db.customers,
+      )..where((t) => t.id.equals(customerId))).getSingle();
+      expect(customer.currentBalance, 150); // 80 + 70 unpaid
+    });
+
+    test('adds any unpaid balance to Customers.balance regardless of payment method', () async {
+      final sodaId = await addProduct('Soda', stock: 10);
+      final customerId = await addCustomer('Jane', creditLimit: 1000);
+
+      await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 2)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'cash',
+        amountPaid: 100, // 40 short of the 140 total
+      );
+
+      final customer = await (db.select(
+        db.customers,
+      )..where((t) => t.id.equals(customerId))).getSingle();
+      expect(customer.currentBalance, 40);
+    });
+
+    test('an empty cart is rejected', () {
+      expect(
+        () => repo.completeSale(cart: const [], userId: userId, paymentMethod: 'cash'),
+        throwsArgumentError,
+      );
     });
   });
 }
