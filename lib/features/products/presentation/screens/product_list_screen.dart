@@ -5,6 +5,7 @@ import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:duka_pos/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:duka_pos/features/expenses/presentation/screens/expenses_screen.dart';
 import 'package:duka_pos/features/products/presentation/providers/product_list_providers.dart';
 import 'package:duka_pos/features/products/presentation/screens/product_form_screen.dart';
 import 'package:duka_pos/features/purchases/presentation/screens/purchase_list_screen.dart';
@@ -71,6 +72,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 'customers' => const CustomerListScreen(),
                 'purchases' => const PurchaseListScreen(),
                 'suppliers' => const SupplierListScreen(),
+                'expenses' => const ExpensesScreen(),
                 _ => const DashboardScreen(),
               };
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
@@ -114,6 +116,14 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   dense: true,
                   leading: Icon(Icons.store_outlined),
                   title: Text('Suppliers'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'expenses',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.receipt_long_outlined),
+                  title: Text('Expenses'),
                 ),
               ),
             ],
