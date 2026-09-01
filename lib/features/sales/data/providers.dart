@@ -1,5 +1,6 @@
 import 'package:duka_pos/core/authorization/providers.dart';
 import 'package:duka_pos/core/database/providers.dart';
+import 'package:duka_pos/features/credit/data/providers.dart';
 import 'package:duka_pos/features/inventory/data/providers.dart';
 import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
 import 'package:duka_pos/features/sales/domain/repositories/sale_repository.dart';
@@ -10,6 +11,7 @@ final saleRepositoryProvider = Provider<SaleRepository>((ref) {
   return SaleRepositoryImpl(
     ref.watch(databaseProvider),
     ref.watch(stockMovementRepositoryProvider),
+    ref.watch(creditRepositoryProvider),
   );
 });
 

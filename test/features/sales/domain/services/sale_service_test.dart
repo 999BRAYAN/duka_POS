@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:duka_pos/core/authorization/authorization_exceptions.dart';
 import 'package:duka_pos/core/authorization/authorization_service.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/credit/data/repositories/credit_repository_impl.dart';
 import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
 import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
 import 'package:duka_pos/features/sales/domain/models/cart_line.dart';
@@ -30,7 +31,11 @@ void main() {
 
   setUp(() async {
     db = DukaDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
-    repository = SaleRepositoryImpl(db, StockMovementRepositoryImpl(db));
+    repository = SaleRepositoryImpl(
+      db,
+      StockMovementRepositoryImpl(db),
+      CreditRepositoryImpl(db),
+    );
 
     productId = (await db.into(db.products).insertReturning(
       ProductsCompanion.insert(

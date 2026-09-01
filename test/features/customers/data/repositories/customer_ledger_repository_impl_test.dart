@@ -21,8 +21,8 @@ void main() {
   setUp(() async {
     db = DukaDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
     ledgerRepo = CustomerLedgerRepositoryImpl(db);
-    saleRepo = SaleRepositoryImpl(db, StockMovementRepositoryImpl(db));
     creditRepo = CreditRepositoryImpl(db);
+    saleRepo = SaleRepositoryImpl(db, StockMovementRepositoryImpl(db), creditRepo);
 
     customerId = (await db.into(db.customers).insertReturning(
       CustomersCompanion.insert(
@@ -59,10 +59,18 @@ void main() {
   // completeSale/recordPayment stamp createdAt with DateTime.now() and
   // don't expose it as a parameter — backdating afterwards gives the test
   // deterministic, well-separated dates instead of racing the real clock.
-  Future<void> setSaleCreatedAt(int saleId, DateTime date) {
-    return (db.update(
+  // The ledger reads credit_transactions, so a sale's own createdAt no
+  // longer places it on the statement — the CHARGE row written alongside it
+  // does. Both are moved together to keep the two consistent.
+  Future<void> setSaleCreatedAt(int saleId, DateTime date) async {
+    await (db.update(
       db.sales,
     )..where((t) => t.id.equals(saleId))).write(SalesCompanion(createdAt: Value(date)));
+    await (db.update(
+      db.creditTransactions,
+    )..where((t) => t.saleId.equals(saleId))).write(
+      CreditTransactionsCompanion(createdAt: Value(date)),
+    );
   }
 
   Future<void> setPaymentCreatedAt(int transactionId, DateTime date) {
@@ -195,15 +203,21 @@ void main() {
         db.customers,
       )..where((t) => t.id.equals(customerId))).getSingle();
 
-      expect(
-        entries.map((e) => e.reference),
-        [kept.invoiceNumber],
-        reason: 'the voided sale is gone from the statement',
-      );
+      // The void is shown, not hidden: the charge stays on the statement
+      // and a reversal cancels it, so the customer can see what happened
+      // rather than finding a sale silently missing.
+      expect(entries.map((e) => e.type), [
+        CustomerLedgerEntryType.creditSale,
+        CustomerLedgerEntryType.creditSale,
+        CustomerLedgerEntryType.reversal,
+      ]);
+      expect(entries.map((e) => e.reference), [
+        kept.invoiceNumber,
+        voided.invoiceNumber,
+        voided.invoiceNumber,
+      ]);
       // The identity that matters: the ledger's own running total and the
-      // customer's stored balance still agree after a void. Either half of
-      // this fix alone would break it — the balance reversal without the
-      // filter double-counts, the filter without the reversal under-counts.
+      // customer's stored balance still agree after a void.
       expect(entries.last.runningBalance, 300);
       expect(customer.currentBalance, 300);
     },

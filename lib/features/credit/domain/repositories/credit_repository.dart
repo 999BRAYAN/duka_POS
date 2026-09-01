@@ -24,6 +24,18 @@ abstract interface class CreditRepository {
     String? notes,
   });
 
+  /// Reverses the charge a sale placed on [customerId] — used when that
+  /// sale is voided. Decreases [Customer.currentBalance] by [amount],
+  /// floored at zero for the same reason [recordPayment] floors: payments
+  /// may already have been taken against this debt, and the shop never
+  /// ends up owing the customer.
+  Future<CreditTransaction> reverseSaleCharge({
+    required int customerId,
+    required int saleId,
+    required double amount,
+    String? notes,
+  });
+
   Stream<List<CreditTransaction>> watchTransactionsForCustomer(
     int customerId,
   );

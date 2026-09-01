@@ -1,6 +1,7 @@
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:drift/native.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/credit/data/repositories/credit_repository_impl.dart';
 import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
 import 'package:duka_pos/features/inventory/domain/repositories/stock_movement_repository.dart';
 import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
@@ -56,7 +57,11 @@ void main() {
 
   setUp(() async {
     db = DukaDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
-    repo = SaleRepositoryImpl(db, StockMovementRepositoryImpl(db));
+    repo = SaleRepositoryImpl(
+      db,
+      StockMovementRepositoryImpl(db),
+      CreditRepositoryImpl(db),
+    );
 
     final product = await db.into(db.products).insertReturning(
       ProductsCompanion.insert(
@@ -247,6 +252,57 @@ void main() {
         0,
         reason: 'the shop never ends up owing the customer money',
       );
+    });
+
+    test('a credit sale leaves a CHARGE row, and voiding it leaves a REVERSAL', () async {
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', quantity: 3, price: 80)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 100,
+      );
+
+      var rows = await (db.select(
+        db.creditTransactions,
+      )..where((t) => t.customerId.equals(customerId))).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.type, 'CHARGE');
+      expect(rows.single.amount, 140);
+      expect(rows.single.saleId, sale.id, reason: 'the charge points back at its sale');
+      expect(rows.single.balanceAfter, 140);
+
+      await repo.voidSale(sale.uuid);
+
+      rows = await (db.select(db.creditTransactions)
+            ..where((t) => t.customerId.equals(customerId))
+            ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+          .get();
+      expect(rows.map((r) => r.type), ['CHARGE', 'REVERSAL']);
+      expect(rows.last.amount, 140);
+      expect(rows.last.balanceAfter, 0);
+
+      // The whole point: the balance can be rebuilt from these rows alone.
+      final rebuilt = rows.fold<double>(
+        0,
+        (sum, r) => r.type == 'CHARGE' ? sum + r.amount : sum - r.amount,
+      );
+      expect(rebuilt, (await readCustomer()).currentBalance);
+    });
+
+    test('a fully-paid sale writes no credit transaction at all', () async {
+      await repo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', quantity: 2, price: 80)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'cash',
+        amountPaid: 160,
+      );
+
+      final rows = await (db.select(
+        db.creditTransactions,
+      )..where((t) => t.customerId.equals(customerId))).get();
+      expect(rows, isEmpty, reason: 'nothing was owed, so nothing was charged');
     });
 
     test('a sale cannot be voided twice', () async {
@@ -687,6 +743,7 @@ void main() {
         final flakyRepo = SaleRepositoryImpl(
           db,
           _ThrowsAfterFirstMovement(StockMovementRepositoryImpl(db)),
+          CreditRepositoryImpl(db),
         );
 
         await expectLater(

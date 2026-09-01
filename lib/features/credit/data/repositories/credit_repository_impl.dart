@@ -48,6 +48,26 @@ class CreditRepositoryImpl implements CreditRepository {
     );
   }
 
+  @override
+  Future<CreditTransaction> reverseSaleCharge({
+    required int customerId,
+    required int saleId,
+    required double amount,
+    String? notes,
+  }) {
+    return _applyTransaction(
+      customerId: customerId,
+      saleId: saleId,
+      type: 'REVERSAL',
+      amount: amount,
+      // Same floor as recordPayment, for the same reason: the debt may
+      // already have been settled before anyone noticed the sale was wrong.
+      computeBalanceAfter: (currentBalance) =>
+          currentBalance - amount < 0 ? 0 : currentBalance - amount,
+      notes: notes,
+    );
+  }
+
   Future<CreditTransaction> _applyTransaction({
     required int customerId,
     required int? saleId,

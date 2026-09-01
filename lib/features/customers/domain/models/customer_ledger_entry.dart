@@ -1,5 +1,6 @@
-/// Which direction a [CustomerLedgerEntry] moves the customer's balance.
-enum CustomerLedgerEntryType { creditSale, payment }
+/// Which direction a [CustomerLedgerEntry] moves the customer's balance:
+/// [creditSale] adds to it, [payment] and [reversal] take away from it.
+enum CustomerLedgerEntryType { creditSale, payment, reversal }
 
 /// One row of [CustomerLedgerRepository.getLedgerForCustomer]: either a
 /// sale that left a balance due (a "sale on credit", regardless of what its

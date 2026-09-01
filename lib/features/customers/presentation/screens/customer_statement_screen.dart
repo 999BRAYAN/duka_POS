@@ -131,13 +131,18 @@ class _LedgerTable extends StatelessWidget {
 
   DataRow _row(CustomerLedgerEntry entry) {
     final isCreditSale = entry.type == CustomerLedgerEntryType.creditSale;
+    final label = switch (entry.type) {
+      CustomerLedgerEntryType.creditSale => 'Credit sale',
+      CustomerLedgerEntryType.payment => 'Payment',
+      CustomerLedgerEntryType.reversal => 'Sale voided',
+    };
 
     return DataRow(
       cells: [
         DataCell(Text(_dateFormat.format(entry.date))),
         DataCell(
           Text(
-            isCreditSale ? 'Credit sale' : 'Payment',
+            label,
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: isCreditSale ? AppColors.rust700 : AppColors.green700,

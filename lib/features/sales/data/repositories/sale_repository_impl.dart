@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/credit/domain/repositories/credit_repository.dart';
 import 'package:duka_pos/features/inventory/domain/repositories/stock_movement_repository.dart';
 import 'package:duka_pos/features/sales/domain/exceptions.dart';
 import 'package:duka_pos/features/sales/domain/models/cart_line.dart';
@@ -13,11 +14,20 @@ typedef _PriceLine = ({int productId, double quantity, double lineTotal});
 /// void/return (stock coming back). Actual stock changes go through
 /// [StockMovementRepository.recordMovement] rather than writing
 /// `products.stock` here — see that repository's class doc.
+///
+/// `Customers.currentBalance` follows the same rule: it is never written
+/// here. Every change goes through [CreditRepository], so each one leaves a
+/// `credit_transactions` row behind it and a customer's statement can be
+/// derived from that table alone. Calling into another repository from
+/// inside this one's `db.transaction()` still participates in that same
+/// transaction — drift tracks the active transaction per-Zone, and both
+/// repositories share one [DukaDatabase] instance.
 class SaleRepositoryImpl implements SaleRepository {
-  SaleRepositoryImpl(this._db, this._stockMovements);
+  SaleRepositoryImpl(this._db, this._stockMovements, this._credit);
 
   final DukaDatabase _db;
   final StockMovementRepository _stockMovements;
+  final CreditRepository _credit;
   static const _uuid = Uuid();
 
   @override
@@ -241,13 +251,11 @@ class SaleRepositoryImpl implements SaleRepository {
       }
 
       if (customer != null && balanceDue > 0) {
-        await (_db.update(
-          _db.customers,
-        )..where((t) => t.id.equals(customer!.id))).write(
-          CustomersCompanion(
-            currentBalance: Value(customer.currentBalance + balanceDue),
-            updatedAt: Value(now),
-          ),
+        await _credit.chargeCustomer(
+          customerId: customer.id,
+          saleId: sale.id,
+          amount: balanceDue,
+          notes: 'Sale ${sale.invoiceNumber}',
         );
       }
 
@@ -318,29 +326,18 @@ class SaleRepositoryImpl implements SaleRepository {
         );
       }
 
-      // The mirror of completeSale's balance write: whatever this sale
-      // added to the customer's balance comes back off it. Without this a
-      // voided credit sale returned the goods but kept the debt, leaving
-      // the customer owing for a sale that no longer exists.
-      //
-      // Floored at zero for the same reason CreditRepository.recordPayment
-      // floors: if payments have already been taken against this debt, the
-      // reversal must not drive the balance negative into a shop-owes-
-      // customer state this app has no concept of.
+      // The mirror of completeSale's charge: whatever this sale added to
+      // the customer's balance comes back off it, as its own REVERSAL row
+      // so the statement shows the void rather than silently losing the
+      // charge. Without this a voided credit sale returned the goods but
+      // kept the debt.
       final balanceDue = sale.total - sale.amountPaid;
       if (balanceDue > 0 && sale.customerId != null) {
-        final customer = await (_db.select(
-          _db.customers,
-        )..where((t) => t.id.equals(sale.customerId!))).getSingle();
-        final reversed = customer.currentBalance - balanceDue;
-
-        await (_db.update(
-          _db.customers,
-        )..where((t) => t.id.equals(customer.id))).write(
-          CustomersCompanion(
-            currentBalance: Value(reversed < 0 ? 0 : reversed),
-            updatedAt: Value(now),
-          ),
+        await _credit.reverseSaleCharge(
+          customerId: sale.customerId!,
+          saleId: sale.id,
+          amount: balanceDue,
+          notes: 'Void of ${sale.invoiceNumber}',
         );
       }
 

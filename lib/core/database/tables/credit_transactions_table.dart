@@ -8,7 +8,9 @@ class CreditTransactions extends Table {
   TextColumn get uuid => text().unique()();
   IntColumn get customerId => integer().references(Customers, #id)();
   IntColumn get saleId => integer().nullable().references(Sales, #id)();
-  // CHARGE, PAYMENT
+  // CHARGE (a sale left a balance owing), PAYMENT (money collected),
+  // REVERSAL (a charged sale was voided). CHARGE increases the balance;
+  // PAYMENT and REVERSAL decrease it.
   TextColumn get type => text()();
   RealColumn get amount => real()();
   RealColumn get balanceAfter => real()();

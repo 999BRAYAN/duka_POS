@@ -10,58 +10,66 @@ class CustomerLedgerRepositoryImpl implements CustomerLedgerRepository {
 
   @override
   Future<List<CustomerLedgerEntry>> getLedgerForCustomer(int customerId) async {
-    // Only sales left with a balance due count as "on credit" here — the
-    // same total > amountPaid condition SaleRepository.completeSale checks
-    // against the customer's creditLimit, regardless of what
-    // paymentMethod is literally labeled. A fully-paid sale never touches
-    // Customers.currentBalance, so it has no place in this ledger.
-    //
-    // Void sales are excluded because voidSale now reverses its charge
-    // against Customers.currentBalance. This filter and that reversal are
-    // one decision: leave a void sale in the ledger and the running
-    // balance stops reconciling with the customer's stored balance by
-    // exactly the voided amount.
-    final sales = await (_db.select(_db.sales)..where(
-      (t) =>
-          t.customerId.equals(customerId) &
-          t.total.isBiggerThan(t.amountPaid) &
-          t.status.equals('void').not(),
-    )).get();
+    // One table, one query. Every movement of Customers.currentBalance now
+    // goes through CreditRepository and leaves a row here — a sale that
+    // left money owing (CHARGE), money collected (PAYMENT), or a voided
+    // sale's charge coming back off (REVERSAL). This used to merge the
+    // sales table in as well, because sales wrote the balance directly and
+    // left no row of their own to read.
+    final transactions = await (_db.select(_db.creditTransactions)
+          ..where((t) => t.customerId.equals(customerId))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.createdAt),
+            // Rows written inside one transaction can share a millisecond,
+            // so id breaks the tie and keeps the running balance stable.
+            (t) => OrderingTerm.asc(t.id),
+          ]))
+        .get();
 
-    final payments = await (_db.select(_db.creditTransactions)..where(
-      (t) => t.customerId.equals(customerId) & t.type.equals('PAYMENT'),
-    )).get();
-
-    final postings = [
-      for (final sale in sales)
-        (
-          date: sale.createdAt,
-          type: CustomerLedgerEntryType.creditSale,
-          reference: sale.invoiceNumber,
-          amount: sale.total - sale.amountPaid,
-        ),
-      for (final payment in payments)
-        (
-          date: payment.createdAt,
-          type: CustomerLedgerEntryType.payment,
-          reference: payment.method ?? 'unspecified',
-          amount: payment.amount,
-        ),
-    ]..sort((a, b) => a.date.compareTo(b.date));
+    // Invoice numbers for the CHARGE/REVERSAL rows that carry a saleId, so
+    // a statement line reads "INV-000123" rather than a bare row id.
+    final saleIds = transactions.map((t) => t.saleId).nonNulls.toSet();
+    final invoiceNumbers = <int, String>{};
+    if (saleIds.isNotEmpty) {
+      final sales = await (_db.select(
+        _db.sales,
+      )..where((t) => t.id.isIn(saleIds))).get();
+      for (final sale in sales) {
+        invoiceNumbers[sale.id] = sale.invoiceNumber;
+      }
+    }
 
     var runningBalance = 0.0;
     return [
-      for (final posting in postings)
-        CustomerLedgerEntry(
-          date: posting.date,
-          type: posting.type,
-          reference: posting.reference,
-          amount: posting.amount,
-          runningBalance: runningBalance += switch (posting.type) {
-            CustomerLedgerEntryType.creditSale => posting.amount,
-            CustomerLedgerEntryType.payment => -posting.amount,
-          },
-        ),
+      for (final transaction in transactions)
+        () {
+          final type = switch (transaction.type) {
+            'CHARGE' => CustomerLedgerEntryType.creditSale,
+            'REVERSAL' => CustomerLedgerEntryType.reversal,
+            _ => CustomerLedgerEntryType.payment,
+          };
+          runningBalance += switch (type) {
+            CustomerLedgerEntryType.creditSale => transaction.amount,
+            CustomerLedgerEntryType.payment => -transaction.amount,
+            CustomerLedgerEntryType.reversal => -transaction.amount,
+          };
+          // Never let the running total go below zero: the balance writes
+          // themselves are floored, so a reversal or payment against an
+          // already-settled debt must not push this line negative either.
+          if (runningBalance < 0) runningBalance = 0;
+
+          return CustomerLedgerEntry(
+            date: transaction.createdAt,
+            type: type,
+            reference: switch (type) {
+              CustomerLedgerEntryType.payment =>
+                transaction.method ?? 'unspecified',
+              _ => invoiceNumbers[transaction.saleId] ?? 'adjustment',
+            },
+            amount: transaction.amount,
+            runningBalance: runningBalance,
+          );
+        }(),
     ];
   }
 }

@@ -57,7 +57,7 @@ void main() {
         createdAt: DateTime.now(),
       ),
     );
-    await db.into(db.sales).insert(
+    final sale = await db.into(db.sales).insertReturning(
       SalesCompanion.insert(
         uuid: 'sale-1',
         invoiceNumber: 'INV-000001',
@@ -67,6 +67,20 @@ void main() {
         total: const Value(500),
         amountPaid: const Value(200),
         paymentMethod: 'credit',
+        createdAt: DateTime(2026, 1, 1),
+      ),
+    );
+    // The CHARGE row is what puts the sale on the statement — the sale row
+    // alone no longer does, now that every balance change is a credit
+    // transaction.
+    await db.into(db.creditTransactions).insert(
+      CreditTransactionsCompanion.insert(
+        uuid: 'txn-charge',
+        customerId: customer.id,
+        saleId: Value(sale.id),
+        type: 'CHARGE',
+        amount: 300,
+        balanceAfter: 300,
         createdAt: DateTime(2026, 1, 1),
       ),
     );
