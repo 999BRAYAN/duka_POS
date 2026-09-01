@@ -1945,6 +1945,21 @@ class $CustomersTable extends Customers
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _isWalkInMeta = const VerificationMeta(
+    'isWalkIn',
+  );
+  @override
+  late final GeneratedColumn<bool> isWalkIn = GeneratedColumn<bool>(
+    'is_walk_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_walk_in" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1977,6 +1992,7 @@ class $CustomersTable extends Customers
     address,
     creditLimit,
     currentBalance,
+    isWalkIn,
     createdAt,
     updatedAt,
   ];
@@ -2047,6 +2063,12 @@ class $CustomersTable extends Customers
         ),
       );
     }
+    if (data.containsKey('is_walk_in')) {
+      context.handle(
+        _isWalkInMeta,
+        isWalkIn.isAcceptableOrUnknown(data['is_walk_in']!, _isWalkInMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2102,6 +2124,10 @@ class $CustomersTable extends Customers
         DriftSqlType.double,
         data['${effectivePrefix}current_balance'],
       )!,
+      isWalkIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_walk_in'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2128,6 +2154,7 @@ class Customer extends DataClass implements Insertable<Customer> {
   final String? address;
   final double creditLimit;
   final double currentBalance;
+  final bool isWalkIn;
   final DateTime createdAt;
   final DateTime? updatedAt;
   const Customer({
@@ -2139,6 +2166,7 @@ class Customer extends DataClass implements Insertable<Customer> {
     this.address,
     required this.creditLimit,
     required this.currentBalance,
+    required this.isWalkIn,
     required this.createdAt,
     this.updatedAt,
   });
@@ -2159,6 +2187,7 @@ class Customer extends DataClass implements Insertable<Customer> {
     }
     map['credit_limit'] = Variable<double>(creditLimit);
     map['current_balance'] = Variable<double>(currentBalance);
+    map['is_walk_in'] = Variable<bool>(isWalkIn);
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2182,6 +2211,7 @@ class Customer extends DataClass implements Insertable<Customer> {
           : Value(address),
       creditLimit: Value(creditLimit),
       currentBalance: Value(currentBalance),
+      isWalkIn: Value(isWalkIn),
       createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
@@ -2203,6 +2233,7 @@ class Customer extends DataClass implements Insertable<Customer> {
       address: serializer.fromJson<String?>(json['address']),
       creditLimit: serializer.fromJson<double>(json['creditLimit']),
       currentBalance: serializer.fromJson<double>(json['currentBalance']),
+      isWalkIn: serializer.fromJson<bool>(json['isWalkIn']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
@@ -2219,6 +2250,7 @@ class Customer extends DataClass implements Insertable<Customer> {
       'address': serializer.toJson<String?>(address),
       'creditLimit': serializer.toJson<double>(creditLimit),
       'currentBalance': serializer.toJson<double>(currentBalance),
+      'isWalkIn': serializer.toJson<bool>(isWalkIn),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
@@ -2233,6 +2265,7 @@ class Customer extends DataClass implements Insertable<Customer> {
     Value<String?> address = const Value.absent(),
     double? creditLimit,
     double? currentBalance,
+    bool? isWalkIn,
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
   }) => Customer(
@@ -2244,6 +2277,7 @@ class Customer extends DataClass implements Insertable<Customer> {
     address: address.present ? address.value : this.address,
     creditLimit: creditLimit ?? this.creditLimit,
     currentBalance: currentBalance ?? this.currentBalance,
+    isWalkIn: isWalkIn ?? this.isWalkIn,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
   );
@@ -2261,6 +2295,7 @@ class Customer extends DataClass implements Insertable<Customer> {
       currentBalance: data.currentBalance.present
           ? data.currentBalance.value
           : this.currentBalance,
+      isWalkIn: data.isWalkIn.present ? data.isWalkIn.value : this.isWalkIn,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2277,6 +2312,7 @@ class Customer extends DataClass implements Insertable<Customer> {
           ..write('address: $address, ')
           ..write('creditLimit: $creditLimit, ')
           ..write('currentBalance: $currentBalance, ')
+          ..write('isWalkIn: $isWalkIn, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2293,6 +2329,7 @@ class Customer extends DataClass implements Insertable<Customer> {
     address,
     creditLimit,
     currentBalance,
+    isWalkIn,
     createdAt,
     updatedAt,
   );
@@ -2308,6 +2345,7 @@ class Customer extends DataClass implements Insertable<Customer> {
           other.address == this.address &&
           other.creditLimit == this.creditLimit &&
           other.currentBalance == this.currentBalance &&
+          other.isWalkIn == this.isWalkIn &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2321,6 +2359,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
   final Value<String?> address;
   final Value<double> creditLimit;
   final Value<double> currentBalance;
+  final Value<bool> isWalkIn;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
   const CustomersCompanion({
@@ -2332,6 +2371,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     this.address = const Value.absent(),
     this.creditLimit = const Value.absent(),
     this.currentBalance = const Value.absent(),
+    this.isWalkIn = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2344,6 +2384,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     this.address = const Value.absent(),
     this.creditLimit = const Value.absent(),
     this.currentBalance = const Value.absent(),
+    this.isWalkIn = const Value.absent(),
     required DateTime createdAt,
     this.updatedAt = const Value.absent(),
   }) : uuid = Value(uuid),
@@ -2358,6 +2399,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     Expression<String>? address,
     Expression<double>? creditLimit,
     Expression<double>? currentBalance,
+    Expression<bool>? isWalkIn,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2370,6 +2412,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
       if (address != null) 'address': address,
       if (creditLimit != null) 'credit_limit': creditLimit,
       if (currentBalance != null) 'current_balance': currentBalance,
+      if (isWalkIn != null) 'is_walk_in': isWalkIn,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2384,6 +2427,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     Value<String?>? address,
     Value<double>? creditLimit,
     Value<double>? currentBalance,
+    Value<bool>? isWalkIn,
     Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
   }) {
@@ -2396,6 +2440,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
       address: address ?? this.address,
       creditLimit: creditLimit ?? this.creditLimit,
       currentBalance: currentBalance ?? this.currentBalance,
+      isWalkIn: isWalkIn ?? this.isWalkIn,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2428,6 +2473,9 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
     if (currentBalance.present) {
       map['current_balance'] = Variable<double>(currentBalance.value);
     }
+    if (isWalkIn.present) {
+      map['is_walk_in'] = Variable<bool>(isWalkIn.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2448,6 +2496,7 @@ class CustomersCompanion extends UpdateCompanion<Customer> {
           ..write('address: $address, ')
           ..write('creditLimit: $creditLimit, ')
           ..write('currentBalance: $currentBalance, ')
+          ..write('isWalkIn: $isWalkIn, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -9423,6 +9472,7 @@ typedef $$CustomersTableCreateCompanionBuilder =
       Value<String?> address,
       Value<double> creditLimit,
       Value<double> currentBalance,
+      Value<bool> isWalkIn,
       required DateTime createdAt,
       Value<DateTime?> updatedAt,
     });
@@ -9436,6 +9486,7 @@ typedef $$CustomersTableUpdateCompanionBuilder =
       Value<String?> address,
       Value<double> creditLimit,
       Value<double> currentBalance,
+      Value<bool> isWalkIn,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
     });
@@ -9534,6 +9585,11 @@ class $$CustomersTableFilterComposer
 
   ColumnFilters<double> get currentBalance => $composableBuilder(
     column: $table.currentBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isWalkIn => $composableBuilder(
+    column: $table.isWalkIn,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9647,6 +9703,11 @@ class $$CustomersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isWalkIn => $composableBuilder(
+    column: $table.isWalkIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9694,6 +9755,9 @@ class $$CustomersTableAnnotationComposer
     column: $table.currentBalance,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isWalkIn =>
+      $composableBuilder(column: $table.isWalkIn, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9789,6 +9853,7 @@ class $$CustomersTableTableManager
                 Value<String?> address = const Value.absent(),
                 Value<double> creditLimit = const Value.absent(),
                 Value<double> currentBalance = const Value.absent(),
+                Value<bool> isWalkIn = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
               }) => CustomersCompanion(
@@ -9800,6 +9865,7 @@ class $$CustomersTableTableManager
                 address: address,
                 creditLimit: creditLimit,
                 currentBalance: currentBalance,
+                isWalkIn: isWalkIn,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -9813,6 +9879,7 @@ class $$CustomersTableTableManager
                 Value<String?> address = const Value.absent(),
                 Value<double> creditLimit = const Value.absent(),
                 Value<double> currentBalance = const Value.absent(),
+                Value<bool> isWalkIn = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> updatedAt = const Value.absent(),
               }) => CustomersCompanion.insert(
@@ -9824,6 +9891,7 @@ class $$CustomersTableTableManager
                 address: address,
                 creditLimit: creditLimit,
                 currentBalance: currentBalance,
+                isWalkIn: isWalkIn,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

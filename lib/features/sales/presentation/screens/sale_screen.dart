@@ -229,7 +229,11 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
 
     final productsAsync = ref.watch(productsStreamProvider);
     final customersAsync = ref.watch(customersStreamProvider);
-    final customers = customersAsync.valueOrNull ?? const <Customer>[];
+    // The seeded walk-in row (see seedWalkInCustomer) is excluded here — the
+    // dropdown's own "Walk-in customer" (null) option already covers it.
+    final customers = (customersAsync.valueOrNull ?? const <Customer>[])
+        .where((c) => !c.isWalkIn)
+        .toList();
 
     final query = _searchController.text.trim().toLowerCase();
     final products = productsAsync.valueOrNull ?? const <Product>[];
