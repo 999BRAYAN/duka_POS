@@ -8,6 +8,11 @@ import 'package:duka_pos/features/sales/domain/repositories/sale_repository.dart
 /// [Permission.processSale] in front of [SaleRepository.completeSale],
 /// which stays a plain data-access boundary (mirrors ProductService /
 /// InventoryService / PurchaseService's split from their repositories).
+///
+/// Bypassing the repository's credit-limit check additionally requires
+/// [Permission.overrideCreditLimit] — a cashier can ring up sales but can't
+/// grant credit beyond what a customer already qualifies for; that call is
+/// reserved for whoever holds this permission (admin/manager today).
 class SaleService {
   SaleService(this._repository, this._authorizationService);
 
@@ -24,6 +29,9 @@ class SaleService {
     bool overrideCreditLimit = false,
   }) {
     _authorizationService.require(Permission.processSale);
+    if (overrideCreditLimit) {
+      _authorizationService.require(Permission.overrideCreditLimit);
+    }
     return _repository.completeSale(
       cart: cart,
       customerId: customerId,

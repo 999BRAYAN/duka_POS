@@ -163,9 +163,15 @@ class SaleRepositoryImpl implements SaleRepository {
         )..where((t) => t.id.equals(customerId))).getSingle();
       }
 
+      // Any unpaid balance extends credit, whatever the payment method is
+      // labeled — a "cash" sale that's short still leaves the customer
+      // owing the shop, so it's checked against the same limit a 'credit'
+      // sale would be. With no customer at all, there's no one to check
+      // (and no one to charge the shortfall to) — that gap is pre-existing
+      // and unrelated to this check.
       final balanceDue = total - amountPaid;
-      if (paymentMethod == 'credit' && !overrideCreditLimit) {
-        final wouldBeBalance = customer!.currentBalance + balanceDue;
+      if (balanceDue > 0 && customer != null && !overrideCreditLimit) {
+        final wouldBeBalance = customer.currentBalance + balanceDue;
         if (wouldBeBalance > customer.creditLimit) {
           throw CreditLimitExceededException(
             customerName: customer.name,

@@ -481,6 +481,32 @@ void main() {
       expect(customer.currentBalance, 80); // unchanged
     });
 
+    test(
+      'a cash sale left with a balance due is checked against the credit limit too, '
+      'not just an explicit "credit" payment method',
+      () async {
+        final sodaId = await addProduct('Soda', stock: 10);
+        final customerId = await addCustomer('Jane', creditLimit: 100, currentBalance: 80);
+
+        await expectLater(
+          repo.completeSale(
+            cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+            customerId: customerId,
+            userId: userId,
+            paymentMethod: 'cash',
+            amountPaid: 0, // the full 70 is left as a balance due
+          ),
+          throwsA(isA<CreditLimitExceededException>()),
+        );
+
+        expect(await repo.watchSales().first, isEmpty);
+        final customer = await (db.select(
+          db.customers,
+        )..where((t) => t.id.equals(customerId))).getSingle();
+        expect(customer.currentBalance, 80); // unchanged
+      },
+    );
+
     test('overrideCreditLimit bypasses the limit check', () async {
       final sodaId = await addProduct('Soda', stock: 10);
       final customerId = await addCustomer('Jane', creditLimit: 100, currentBalance: 80);

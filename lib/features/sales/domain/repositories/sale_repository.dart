@@ -32,12 +32,14 @@ abstract interface class SaleRepository {
   /// - the same minSellingPrice floor check as [createSale], applied to the
   ///   cart's lines with [discount] allocated proportionally (throws
   ///   PriceBelowFloorException),
-  /// - and, for paymentMethod 'credit', that the resulting balance doesn't
-  ///   exceed the customer's creditLimit (throws
-  ///   CreditLimitExceededException) unless [overrideCreditLimit] is set —
-  ///   that flag exists now so the API shape is stable, but there's no
-  ///   audit trail or extra authorization on its use yet; that's future
-  ///   work, not part of this method.
+  /// - and, whenever the sale would leave a balance due (total minus
+  ///   [amountPaid], for any payment method — not just 'credit'), that the
+  ///   resulting balance doesn't exceed the customer's creditLimit (throws
+  ///   CreditLimitExceededException) unless [overrideCreditLimit] is set.
+  ///   This repository doesn't check who's allowed to pass that flag —
+  ///   SaleService.completeSale requires Permission.overrideCreditLimit
+  ///   before forwarding it here, same split as the [Permission.processSale]
+  ///   check on the rest of this method.
   ///
   /// Each line's cost is snapshotted from the product's current costPrice
   /// at this moment (not any earlier value) when recording its

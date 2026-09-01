@@ -91,4 +91,66 @@ void main() {
 
     expect(sale.total, 70);
   });
+
+  group('overrideCreditLimit', () {
+    Future<int> addOverLimitCustomer() {
+      return db
+          .into(db.customers)
+          .insertReturning(
+            CustomersCompanion.insert(
+              uuid: 'cust-1',
+              name: 'Jane',
+              creditLimit: const Value(100),
+              currentBalance: const Value(80),
+              createdAt: DateTime.now(),
+            ),
+          )
+          .then((c) => c.id);
+    }
+
+    test('a cashier cannot pass overrideCreditLimit, even to complete their own sale', () async {
+      final customerId = await addOverLimitCustomer();
+
+      expect(
+        () => serviceAs('cashier').completeSale(
+          cart: [CartLine(productId: productId, name: 'Soda', price: 70, quantity: 1)],
+          customerId: customerId,
+          userId: userId,
+          paymentMethod: 'credit',
+          overrideCreditLimit: true,
+        ),
+        throwsA(isA<UnauthorizedException>()),
+      );
+    });
+
+    test('a manager can pass overrideCreditLimit to bypass the limit check', () async {
+      final customerId = await addOverLimitCustomer();
+
+      final sale = await serviceAs('manager').completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', price: 70, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        overrideCreditLimit: true,
+      );
+
+      expect(sale.total, 70);
+    });
+
+    test('overrideCreditLimit permission is not required when left false', () async {
+      final customerId = await addOverLimitCustomer();
+
+      // Cashiers may still complete ordinary sales for this customer —
+      // they just can't push it over the limit.
+      final sale = await serviceAs('cashier').completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', price: 70, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'cash',
+        amountPaid: 70,
+      );
+
+      expect(sale.total, 70);
+    });
+  });
 }
