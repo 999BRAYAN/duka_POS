@@ -1,6 +1,7 @@
 import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
+import 'package:duka_pos/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:duka_pos/features/products/presentation/providers/product_list_providers.dart';
 import 'package:duka_pos/features/purchases/presentation/screens/purchase_list_screen.dart';
 import 'package:duka_pos/features/sales/presentation/screens/sale_screen.dart';
@@ -48,6 +49,16 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         title: const Text('Products'),
         actions: [
           const ActingAsBadge(),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CustomerListScreen()),
+              ),
+              icon: const Icon(Icons.people_outline, size: 18),
+              label: const Text('Customers'),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: OutlinedButton.icon(

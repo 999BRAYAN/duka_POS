@@ -70,7 +70,12 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     final discount = double.tryParse(_discountController.text) ?? 0;
     final subtotal = cart.fold<double>(0, (sum, line) => sum + line.lineTotal);
     final total = subtotal - discount;
-    final amountPaid = _paymentMethod == 'credit'
+    // Only a real (non-walk-in) customer can be left with a balance — with
+    // no one selected there's nobody to charge the shortfall to, so the
+    // sale must be paid in full. See SaleRepository.completeSale's
+    // credit-limit check, which triggers on this same balanceDue > 0
+    // condition regardless of paymentMethod.
+    final amountPaid = _customerId != null
         ? (double.tryParse(_amountPaidController.text) ?? 0)
         : total;
 
@@ -324,10 +329,25 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                 paymentMethod: _paymentMethod,
                 submitting: _submitting,
                 error: _error,
-                onCustomerChanged: (id) => setState(() => _customerId = id),
+                onCustomerChanged: (id) => setState(() {
+                  // Default a newly-picked customer to "paid in full" — the
+                  // cashier has to deliberately lower this to leave a
+                  // balance, rather than every named-customer sale silently
+                  // becoming unpaid credit. Deselecting back to walk-in
+                  // hides the field again (see amountPaid above), so its
+                  // text no longer matters.
+                  final wasWalkIn = _customerId == null;
+                  _customerId = id;
+                  if (id != null && wasWalkIn) {
+                    _amountPaidController.text = total.toStringAsFixed(2);
+                  } else if (id == null) {
+                    _amountPaidController.text = '0';
+                  }
+                }),
                 onPaymentMethodChanged: (value) =>
                     setState(() => _paymentMethod = value ?? 'cash'),
                 onDiscountChanged: (_) => setState(() {}),
+                onAmountPaidChanged: (_) => setState(() {}),
                 onQuantityChanged: (productId, quantity) =>
                     ref.read(cartProvider.notifier).setQuantity(productId, quantity),
                 onRemoveLine: (productId) =>
@@ -416,6 +436,7 @@ class _CartPanel extends StatelessWidget {
     required this.onCustomerChanged,
     required this.onPaymentMethodChanged,
     required this.onDiscountChanged,
+    required this.onAmountPaidChanged,
     required this.onQuantityChanged,
     required this.onRemoveLine,
     required this.onHold,
@@ -436,6 +457,7 @@ class _CartPanel extends StatelessWidget {
   final ValueChanged<int?> onCustomerChanged;
   final ValueChanged<String?> onPaymentMethodChanged;
   final ValueChanged<String> onDiscountChanged;
+  final ValueChanged<String> onAmountPaidChanged;
   final void Function(int productId, double quantity) onQuantityChanged;
   final ValueChanged<int> onRemoveLine;
   final VoidCallback onHold;
@@ -443,6 +465,9 @@ class _CartPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final amountPaid = double.tryParse(amountPaidController.text) ?? 0;
+    final balanceDue = total - amountPaid;
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -502,16 +527,28 @@ class _CartPanel extends StatelessWidget {
                       ],
                       onChanged: onPaymentMethodChanged,
                     ),
-                    if (paymentMethod == 'credit') ...[
+                    // Only shown once a real customer is picked — with no
+                    // one to bill, the sale must be paid in full (see
+                    // amountPaid in _SaleScreenState._submit).
+                    if (customerId != null) ...[
                       const SizedBox(height: 12),
                       TextField(
                         controller: amountPaidController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: const InputDecoration(
-                          labelText: 'Amount paid now',
+                          labelText: 'Amount paid',
                           isDense: true,
                         ),
+                        onChanged: onAmountPaidChanged,
                       ),
+                      if (balanceDue > 0) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Remaining ${_amountFormat.format(balanceDue)} will be added to '
+                          "this customer's balance.",
+                          style: TextStyle(fontSize: 11.5, color: AppColors.amber800),
+                        ),
+                      ],
                     ],
                     const SizedBox(height: 12),
                     TextField(
