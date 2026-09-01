@@ -5,6 +5,7 @@ import 'package:duka_pos/features/customers/presentation/screens/customer_list_s
 import 'package:duka_pos/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:duka_pos/features/products/presentation/providers/product_list_providers.dart';
 import 'package:duka_pos/features/purchases/presentation/screens/purchase_list_screen.dart';
+import 'package:duka_pos/features/reports/presentation/screens/reports_screen.dart';
 import 'package:duka_pos/features/sales/presentation/screens/sale_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +57,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             ).push(MaterialPageRoute(builder: (_) => const DashboardScreen())),
             icon: const Icon(Icons.dashboard_outlined),
             tooltip: 'Dashboard',
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const ReportsScreen())),
+            icon: const Icon(Icons.bar_chart_outlined),
+            tooltip: 'Reports',
           ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
