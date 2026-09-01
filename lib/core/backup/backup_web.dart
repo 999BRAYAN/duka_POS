@@ -80,6 +80,38 @@ Future<void> downloadDatabaseBackup() async {
   final bytes = await exportDatabaseBytes();
   final filename = 'duka_pos_backup_${_fileStampFormat.format(DateTime.now())}.db';
   triggerBrowserDownload(bytes, filename);
+  _recordBackupTaken();
+}
+
+/// Where the last-backup timestamp lives.
+///
+/// localStorage rather than the database itself, deliberately: this records
+/// when *this device* last wrote a backup file, and it must survive the
+/// database being replaced by a restore. Storing it in the database would
+/// mean a restored backup overwrote the fact that a backup had been taken.
+const _lastBackupKey = 'duka_pos.last_backup_at';
+
+void _recordBackupTaken() {
+  try {
+    web.window.localStorage.setItem(
+      _lastBackupKey,
+      DateTime.now().toIso8601String(),
+    );
+  } catch (_) {
+    // Private browsing and blocked site data both throw here. Losing the
+    // reminder is not a reason to fail a backup that already downloaded.
+  }
+}
+
+/// When this device last downloaded a backup, or null if it never has (or
+/// the browser will not let us remember).
+DateTime? lastBackupAt() {
+  try {
+    final stored = web.window.localStorage.getItem(_lastBackupKey);
+    return stored == null ? null : DateTime.tryParse(stored);
+  } catch (_) {
+    return null;
+  }
 }
 
 /// What a restore attempt ended up doing, so the UI can tell "user changed
@@ -119,6 +151,7 @@ class RestoreAbortedException implements Exception {
 /// delete a database out from under an open connection.
 Future<RestoreOutcome> restoreDatabaseFromPickedFile({
   required Future<void> Function() closeDatabase,
+  required int currentSchemaVersion,
 }) async {
   final picked = await FilePicker.pickFiles(
     dialogTitle: 'Choose a duka_pos backup',
@@ -133,7 +166,11 @@ Future<RestoreOutcome> restoreDatabaseFromPickedFile({
     throw RestoreAbortedException('That file is empty — nothing was restored.');
   }
 
-  await restoreDatabaseFromBytes(bytes, closeDatabase: closeDatabase);
+  await restoreDatabaseFromBytes(
+    bytes,
+    closeDatabase: closeDatabase,
+    currentSchemaVersion: currentSchemaVersion,
+  );
   return RestoreOutcome.restored;
 }
 
@@ -143,10 +180,23 @@ Future<RestoreOutcome> restoreDatabaseFromPickedFile({
 Future<void> restoreDatabaseFromBytes(
   Uint8List bytes, {
   required Future<void> Function() closeDatabase,
+  required int currentSchemaVersion,
 }) async {
   if (!looksLikeSqliteFile(bytes)) {
     throw RestoreAbortedException(
       'That file is not a duka_pos backup — nothing was restored.',
+    );
+  }
+
+  // A backup from a newer version of the app carries tables and columns this
+  // build does not know about, and drift only migrates forwards. Restoring
+  // it would leave a database the app cannot open — with the old data
+  // already gone. Refuse while everything is still intact.
+  final backupVersion = readSchemaVersion(bytes);
+  if (backupVersion != null && backupVersion > currentSchemaVersion) {
+    throw RestoreAbortedException(
+      'That backup was made by a newer version of Duka POS. Update the app '
+      'first — nothing was restored.',
     );
   }
 

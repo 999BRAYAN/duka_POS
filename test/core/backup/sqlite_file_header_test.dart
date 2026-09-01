@@ -44,4 +44,26 @@ void main() {
     }
     expect(looksLikeSqliteFile(withPages), isTrue);
   });
+
+  group('readSchemaVersion', () {
+    Uint8List fileWithVersion(int version) {
+      final bytes = headerOf('SQLite format 3', totalLength: 4096);
+      bytes[60] = (version >> 24) & 0xFF;
+      bytes[61] = (version >> 16) & 0xFF;
+      bytes[62] = (version >> 8) & 0xFF;
+      bytes[63] = version & 0xFF;
+      return bytes;
+    }
+
+    test('reads the user_version where drift keeps the schema version', () {
+      expect(readSchemaVersion(fileWithVersion(6)), 6);
+      expect(readSchemaVersion(fileWithVersion(0)), 0);
+      expect(readSchemaVersion(fileWithVersion(300)), 300);
+    });
+
+    test('returns null for a file too short to hold a header', () {
+      expect(readSchemaVersion(Uint8List(63)), isNull);
+      expect(readSchemaVersion(Uint8List(0)), isNull);
+    });
+  });
 }

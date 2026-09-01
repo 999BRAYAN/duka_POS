@@ -16,3 +16,14 @@ bool looksLikeSqliteFile(Uint8List bytes) {
   }
   return bytes[15] == 0;
 }
+
+/// The `user_version` a SQLite file carries, which is where drift stores the
+/// schema version — a 4-byte big-endian integer at offset 60 of the file
+/// header. Reading it straight out of the bytes means a backup can be
+/// checked for compatibility before anything is opened or replaced.
+///
+/// Returns null when [bytes] is too short to hold a header.
+int? readSchemaVersion(Uint8List bytes) {
+  if (bytes.length < 64) return null;
+  return (bytes[60] << 24) | (bytes[61] << 16) | (bytes[62] << 8) | bytes[63];
+}

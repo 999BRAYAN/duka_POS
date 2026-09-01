@@ -25,9 +25,13 @@ class RestoreAbortedException implements Exception {
 
 Future<RestoreOutcome> restoreDatabaseFromPickedFile({
   required Future<void> Function() closeDatabase,
+  required int currentSchemaVersion,
 }) => throw UnsupportedError(_unsupported);
 
 Future<void> restoreDatabaseFromBytes(
   Uint8List bytes, {
   required Future<void> Function() closeDatabase,
+  required int currentSchemaVersion,
 }) => throw UnsupportedError(_unsupported);
+
+DateTime? lastBackupAt() => null;

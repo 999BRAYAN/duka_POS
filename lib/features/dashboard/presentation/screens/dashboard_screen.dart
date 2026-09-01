@@ -84,6 +84,10 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            if (kIsWeb) ...[
+              const SizedBox(height: 16),
+              const _BackupReminder(),
+            ],
             const SizedBox(height: 24),
             Text('Revenue, last 7 days', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -138,9 +142,11 @@ class DashboardScreen extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
+    final db = ref.read(databaseProvider);
     try {
       final outcome = await restoreDatabaseFromPickedFile(
-        closeDatabase: () => ref.read(databaseProvider).close(),
+        closeDatabase: db.close,
+        currentSchemaVersion: db.schemaVersion,
       );
       if (outcome == RestoreOutcome.cancelled) return;
       // On success the page reloads, so any snackbar here would never be seen.
@@ -149,6 +155,62 @@ class DashboardScreen extends ConsumerWidget {
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
     }
+  }
+}
+
+/// Says when this device last saved a backup, and gets louder the longer it
+/// has been.
+///
+/// The shop's data lives in one browser profile: clearing site data or
+/// losing the machine loses everything not backed up. That risk is invisible
+/// until the day it isn't, so it is stated on the screen a manager opens
+/// most rather than left in a menu.
+class _BackupReminder extends StatelessWidget {
+  const _BackupReminder();
+
+  @override
+  Widget build(BuildContext context) {
+    final last = lastBackupAt();
+    final daysAgo = last == null ? null : DateTime.now().difference(last).inDays;
+    final stale = daysAgo == null || daysAgo >= 7;
+
+    final message = switch (daysAgo) {
+      null => 'This shop has never been backed up on this device.',
+      0 => 'Backed up today.',
+      1 => 'Last backup was yesterday.',
+      _ => 'Last backup was $daysAgo days ago.',
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: stale ? AppColors.amber50 : AppColors.stone100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: stale ? AppColors.amber200 : AppColors.stone200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            stale ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+            size: 18,
+            color: stale ? AppColors.amber800 : AppColors.stone500,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              stale
+                  ? '$message Your sales, stock and customer balances exist only '
+                        'in this browser.'
+                  : message,
+              style: TextStyle(
+                fontSize: 13,
+                color: stale ? AppColors.amber800 : AppColors.stone600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
