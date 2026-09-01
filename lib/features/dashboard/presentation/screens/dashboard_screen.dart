@@ -1,9 +1,12 @@
 import 'dart:math';
 
 import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/backup/backup.dart';
+import 'package:duka_pos/core/database/providers.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/dashboard/presentation/providers/dashboard_providers.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -32,7 +35,24 @@ class DashboardScreen extends ConsumerWidget {
     final creditOutstanding = creditAsync.valueOrNull ?? 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard'), actions: const [ActingAsBadge()]),
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+        actions: [
+          if (kIsWeb) ...[
+            IconButton(
+              icon: const Icon(Icons.backup_outlined),
+              tooltip: 'Backup now',
+              onPressed: () => _backupNow(context),
+            ),
+            IconButton(
+              icon: const Icon(Icons.restore_page_outlined),
+              tooltip: 'Restore from backup',
+              onPressed: () => _restoreFromBackup(context, ref),
+            ),
+          ],
+          const ActingAsBadge(),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -82,6 +102,53 @@ class DashboardScreen extends ConsumerWidget {
 
   String _asyncText<T>(AsyncValue<T> value, String Function(T) format) {
     return value.when(data: format, loading: () => '…', error: (_, _) => '—');
+  }
+
+  Future<void> _backupNow(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await downloadDatabaseBackup();
+      messenger.showSnackBar(const SnackBar(content: Text('Backup downloaded.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Backup failed: $e')));
+    }
+  }
+
+  Future<void> _restoreFromBackup(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore from backup?'),
+        content: const Text(
+          'This will replace all current data with the backup file. '
+          'A safety copy of your current data will be downloaded first.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Choose backup file'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final outcome = await restoreDatabaseFromPickedFile(
+        closeDatabase: () => ref.read(databaseProvider).close(),
+      );
+      if (outcome == RestoreOutcome.cancelled) return;
+      // On success the page reloads, so any snackbar here would never be seen.
+    } on RestoreAbortedException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+    }
   }
 }
 
