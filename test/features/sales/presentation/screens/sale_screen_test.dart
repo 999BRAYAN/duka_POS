@@ -104,4 +104,39 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
   });
+
+  testWidgets('holding a sale clears the cart, and resuming it restores the cart', (tester) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Soda'));
+    await tester.pumpAndSettle();
+    expect(find.text('70.00 each'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Hold sale'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No items yet.'), findsOneWidget);
+    expect(find.text('Sale held.'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Held sales'));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(AlertDialog);
+    expect(find.descendant(of: dialog, matching: find.text('Walk-in customer')), findsOneWidget);
+    expect(find.text('1 item(s) · 70.00'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Resume'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('70.00 each'), findsOneWidget);
+    expect(find.text('No items yet.'), findsNothing);
+
+    await tester.tap(find.byTooltip('Held sales'));
+    await tester.pumpAndSettle();
+    expect(find.text('No held sales.'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(Duration.zero);
+  });
 }

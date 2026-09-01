@@ -9,6 +9,7 @@ import 'package:duka_pos/features/sales/data/providers.dart';
 import 'package:duka_pos/features/sales/domain/exceptions.dart';
 import 'package:duka_pos/features/sales/domain/models/cart_line.dart';
 import 'package:duka_pos/features/sales/presentation/providers/cart_provider.dart';
+import 'package:duka_pos/features/sales/presentation/providers/held_sales_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -108,6 +109,117 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     }
   }
 
+  void _hold() {
+    final cart = ref.read(cartProvider);
+    if (cart.isEmpty) return;
+
+    String? customerName;
+    if (_customerId != null) {
+      final customers = ref.read(customersStreamProvider).valueOrNull ?? const <Customer>[];
+      for (final customer in customers) {
+        if (customer.id == _customerId) {
+          customerName = customer.name;
+          break;
+        }
+      }
+    }
+
+    ref.read(heldSalesProvider.notifier).hold(
+      cart: cart,
+      customerId: _customerId,
+      customerName: customerName,
+      paymentMethod: _paymentMethod,
+      discount: double.tryParse(_discountController.text) ?? 0,
+      amountPaid: double.tryParse(_amountPaidController.text) ?? 0,
+    );
+
+    ref.read(cartProvider.notifier).clear();
+    _discountController.text = '0';
+    _amountPaidController.text = '0';
+    setState(() {
+      _customerId = null;
+      _paymentMethod = 'cash';
+      _error = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sale held.')),
+    );
+  }
+
+  void _resumeHeldSale(int id) {
+    final held = ref.read(heldSalesProvider.notifier).resume(id);
+    if (held == null) return;
+
+    ref.read(cartProvider.notifier).replaceAll(held.cart);
+    _discountController.text = held.discount.toString();
+    _amountPaidController.text = held.amountPaid.toString();
+    setState(() {
+      _customerId = held.customerId;
+      _paymentMethod = held.paymentMethod;
+      _error = null;
+    });
+  }
+
+  void _showHeldSales() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Held sales'),
+        content: SizedBox(
+          width: 420,
+          height: 320,
+          child: Consumer(
+            builder: (context, ref, _) {
+              final held = ref.watch(heldSalesProvider);
+              if (held.isEmpty) {
+                return Center(
+                  child: Text('No held sales.', style: TextStyle(color: AppColors.stone500)),
+                );
+              }
+              return ListView.separated(
+                itemCount: held.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final sale = held[index];
+                  return ListTile(
+                    title: Text(sale.customerName ?? 'Walk-in customer'),
+                    subtitle: Text(
+                      '${sale.itemCount.toStringAsFixed(0)} item(s) · '
+                      '${_amountFormat.format(sale.subtotal)}',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          tooltip: 'Discard',
+                          onPressed: () => ref.read(heldSalesProvider.notifier).discard(sale.id),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                            _resumeHeldSale(sale.id);
+                          },
+                          child: const Text('Resume'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
@@ -129,7 +241,26 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
           }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('New sale'), actions: const [ActingAsBadge()]),
+      appBar: AppBar(
+        title: const Text('New sale'),
+        actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final count = ref.watch(heldSalesProvider).length;
+              return IconButton(
+                icon: Badge(
+                  label: Text('$count'),
+                  isLabelVisible: count > 0,
+                  child: const Icon(Icons.pause_circle_outline),
+                ),
+                tooltip: 'Held sales',
+                onPressed: _showHeldSales,
+              );
+            },
+          ),
+          const ActingAsBadge(),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Row(
@@ -197,6 +328,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
                     ref.read(cartProvider.notifier).setQuantity(productId, quantity),
                 onRemoveLine: (productId) =>
                     ref.read(cartProvider.notifier).removeLine(productId),
+                onHold: _hold,
                 onSubmit: _submit,
               ),
             ),
@@ -282,6 +414,7 @@ class _CartPanel extends StatelessWidget {
     required this.onDiscountChanged,
     required this.onQuantityChanged,
     required this.onRemoveLine,
+    required this.onHold,
     required this.onSubmit,
   });
 
@@ -301,6 +434,7 @@ class _CartPanel extends StatelessWidget {
   final ValueChanged<String> onDiscountChanged;
   final void Function(int productId, double quantity) onQuantityChanged;
   final ValueChanged<int> onRemoveLine;
+  final VoidCallback onHold;
   final VoidCallback onSubmit;
 
   @override
@@ -395,15 +529,29 @@ class _CartPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: submitting || cart.isEmpty ? null : onSubmit,
-              child: submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Complete sale'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: submitting || cart.isEmpty ? null : onHold,
+                    child: const Text('Hold sale'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: submitting || cart.isEmpty ? null : onSubmit,
+                    child: submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Complete sale'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

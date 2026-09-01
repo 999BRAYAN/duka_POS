@@ -56,6 +56,9 @@ class CartNotifier extends Notifier<List<CartLine>> {
   }
 
   void clear() => state = const [];
+
+  /// Wholesale-replaces the cart, e.g. when resuming a held sale.
+  void replaceAll(List<CartLine> lines) => state = List<CartLine>.of(lines);
 }
 
 final cartProvider = NotifierProvider<CartNotifier, List<CartLine>>(CartNotifier.new);
