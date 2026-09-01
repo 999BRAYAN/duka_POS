@@ -1,6 +1,9 @@
 import 'package:duka_pos/core/database/providers.dart';
+import 'package:duka_pos/features/inventory/data/providers.dart';
+import 'package:duka_pos/features/reports/data/repositories/inventory_report_repository_impl.dart';
 import 'package:duka_pos/features/reports/data/repositories/profit_and_loss_report_repository_impl.dart';
 import 'package:duka_pos/features/reports/data/repositories/sales_report_repository_impl.dart';
+import 'package:duka_pos/features/reports/domain/repositories/inventory_report_repository.dart';
 import 'package:duka_pos/features/reports/domain/repositories/profit_and_loss_report_repository.dart';
 import 'package:duka_pos/features/reports/domain/repositories/sales_report_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,4 +14,11 @@ final salesReportRepositoryProvider = Provider<SalesReportRepository>((ref) {
 
 final profitAndLossReportRepositoryProvider = Provider<ProfitAndLossReportRepository>((ref) {
   return ProfitAndLossReportRepositoryImpl(ref.watch(databaseProvider));
+});
+
+final inventoryReportRepositoryProvider = Provider<InventoryReportRepository>((ref) {
+  return InventoryReportRepositoryImpl(
+    ref.watch(databaseProvider),
+    ref.watch(stockValuationRepositoryProvider),
+  );
 });
