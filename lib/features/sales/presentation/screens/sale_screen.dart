@@ -2,6 +2,7 @@ import 'package:duka_pos/core/authorization/authorization_exceptions.dart';
 import 'package:duka_pos/core/authorization/current_user_provider.dart';
 import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/core/printing/receipt_pdf.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/customers/presentation/providers.dart';
 import 'package:duka_pos/features/products/presentation/providers/product_list_providers.dart';
@@ -95,7 +96,15 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
       _amountPaidController.text = '0';
       setState(() => _customerId = null);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sale ${sale.invoiceNumber} completed.')),
+        SnackBar(
+          content: Text('Sale ${sale.invoiceNumber} completed.'),
+          // A direct click here is a fresh user gesture, unlike calling
+          // Printing.layoutPdf automatically right after the awaited
+          // completeSale above — some browsers refuse to open a print/
+          // save dialog that isn't a synchronous continuation of a click.
+          action: SnackBarAction(label: 'Print receipt', onPressed: () => _printReceipt(sale)),
+          duration: const Duration(seconds: 6),
+        ),
       );
     } on UnauthorizedException {
       setState(() => _error = "You don't have permission to process a sale.");
@@ -112,6 +121,31 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  Future<void> _printReceipt(Sale sale) async {
+    final items = await ref.read(saleRepositoryProvider).getItemsForSale(sale.id);
+    final products = ref.read(productsStreamProvider).valueOrNull ?? const <Product>[];
+    final productsById = {for (final product in products) product.id: product};
+
+    Customer? customer;
+    if (sale.customerId != null) {
+      final customers = ref.read(customersStreamProvider).valueOrNull ?? const <Customer>[];
+      for (final candidate in customers) {
+        if (candidate.id == sale.customerId) {
+          customer = candidate;
+          break;
+        }
+      }
+    }
+
+    await printReceipt(
+      sale: sale,
+      items: items,
+      productsById: productsById,
+      cashier: ref.read(currentUserProvider),
+      customer: customer,
+    );
   }
 
   void _hold() {
