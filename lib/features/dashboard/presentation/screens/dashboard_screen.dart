@@ -1,0 +1,253 @@
+import 'dart:math';
+
+import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/theme/app_theme.dart';
+import 'package:duka_pos/features/dashboard/presentation/providers/dashboard_providers.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+final _amountFormat = NumberFormat('#,##0.00');
+final _compactAmountFormat = NumberFormat.compact();
+final _weekdayFormat = DateFormat('E');
+final _tooltipDateFormat = DateFormat('d MMM');
+
+/// The shop's at-a-glance status: today's headline numbers alongside a
+/// 7-day revenue trend, so a manager can see both "how's today going" and
+/// "is that normal" in one screen.
+class DashboardScreen extends ConsumerWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final salesAsync = ref.watch(todaySalesReportProvider);
+    final pnlAsync = ref.watch(todayProfitAndLossReportProvider);
+    final lowStockAsync = ref.watch(lowStockCountProvider);
+    final creditAsync = ref.watch(creditOutstandingTotalProvider);
+    final trendAsync = ref.watch(sevenDayRevenueTrendProvider);
+
+    final netProfit = pnlAsync.valueOrNull?.netProfit;
+    final lowStockCount = lowStockAsync.valueOrNull ?? 0;
+    final creditOutstanding = creditAsync.valueOrNull ?? 0;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard'), actions: const [ActingAsBadge()]),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                _KpiCard(
+                  label: "Today's revenue",
+                  value: _asyncText(salesAsync, (r) => _amountFormat.format(r.totalRevenue)),
+                ),
+                const SizedBox(width: 16),
+                _KpiCard(
+                  label: "Today's net profit",
+                  value: _asyncText(pnlAsync, (r) => _amountFormat.format(r.netProfit)),
+                  valueColor: netProfit != null && netProfit < 0 ? AppColors.rust700 : null,
+                ),
+                const SizedBox(width: 16),
+                _KpiCard(
+                  label: 'Low stock',
+                  value: _asyncText(lowStockAsync, (n) => n.toString()),
+                  valueColor: lowStockCount > 0 ? AppColors.amber800 : null,
+                ),
+                const SizedBox(width: 16),
+                _KpiCard(
+                  label: 'Credit outstanding',
+                  value: _asyncText(creditAsync, _amountFormat.format),
+                  valueColor: creditOutstanding > 0 ? AppColors.rust700 : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text('Revenue, last 7 days', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Expanded(
+              child: trendAsync.when(
+                data: (points) => _RevenueTrendChart(points: points),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(child: Text('Failed to load trend: $error')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _asyncText<T>(AsyncValue<T> value, String Function(T) format) {
+    return value.when(data: format, loading: () => '…', error: (_, _) => '—');
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  const _KpiCard({required this.label, required this.value, this.valueColor});
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontSize: 12, color: AppColors.stone500)),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: valueColor),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RevenueTrendChart extends StatelessWidget {
+  const _RevenueTrendChart({required this.points});
+
+  final List<DailyRevenue> points;
+
+  @override
+  Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return Center(
+        child: Text('No data yet.', style: TextStyle(color: AppColors.stone500)),
+      );
+    }
+
+    final maxRevenue = points.fold<double>(0, (max, p) => p.revenue > max ? p.revenue : max);
+    final interval = _niceInterval(maxRevenue);
+    final maxY = maxRevenue == 0 ? interval : (maxRevenue / interval).ceil() * interval;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 24, 24, 12),
+        child: LineChart(
+          LineChartData(
+            minY: 0,
+            maxY: maxY,
+            gridData: FlGridData(
+              drawVerticalLine: false,
+              horizontalInterval: interval,
+              getDrawingHorizontalLine: (_) =>
+                  const FlLine(color: AppColors.stone200, strokeWidth: 1),
+            ),
+            borderData: FlBorderData(show: false),
+            titlesData: FlTitlesData(
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 48,
+                  interval: interval,
+                  getTitlesWidget: (value, meta) => Text(
+                    _compactAmountFormat.format(value),
+                    style: TextStyle(fontSize: 11, color: AppColors.stone500),
+                  ),
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 28,
+                  getTitlesWidget: (value, meta) {
+                    final index = value.round();
+                    if (index < 0 || index >= points.length) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _weekdayFormat.format(points[index].date),
+                        style: TextStyle(fontSize: 11, color: AppColors.stone500),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (_) => AppColors.stone800,
+                getTooltipItems: (touchedSpots) => [
+                  for (final spot in touchedSpots)
+                    LineTooltipItem(
+                      _amountFormat.format(spot.y),
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '\n${_tooltipDateFormat.format(points[spot.x.round()].date)}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: [
+                  for (var i = 0; i < points.length; i++) FlSpot(i.toDouble(), points[i].revenue),
+                ],
+                color: AppColors.amber700,
+                barWidth: 2,
+                dotData: FlDotData(
+                  getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+                    radius: 4,
+                    color: AppColors.amber700,
+                    strokeWidth: 2,
+                    strokeColor: Colors.white,
+                  ),
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: AppColors.amber700.withValues(alpha: 0.1),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A "nice" gridline step for [maxValue] — e.g. 100/200/500/1000 rather
+  /// than an arbitrary maxValue/4 that would land ticks on values like
+  /// 137.5, contradicting the round-numbers convention every other axis in
+  /// this app follows.
+  static double _niceInterval(double maxValue) {
+    if (maxValue <= 0) return 100;
+
+    final roughStep = maxValue / 4;
+    final magnitude = pow(10, (log(roughStep) / ln10).floor()).toDouble();
+    final residual = roughStep / magnitude;
+    final niceResidual = residual < 1.5
+        ? 1.0
+        : residual < 3
+        ? 2.0
+        : residual < 7
+        ? 5.0
+        : 10.0;
+    return niceResidual * magnitude;
+  }
+}

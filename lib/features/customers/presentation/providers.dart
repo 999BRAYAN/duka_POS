@@ -7,6 +7,10 @@ final customersStreamProvider = StreamProvider<List<Customer>>((ref) {
   return ref.watch(customerRepositoryProvider).watchCustomers();
 });
 
+final customersWithOutstandingBalanceStreamProvider = StreamProvider<List<Customer>>((ref) {
+  return ref.watch(customerRepositoryProvider).watchCustomersWithOutstandingBalance();
+});
+
 final customerSearchQueryProvider = StateProvider<String>((ref) => '');
 
 /// [customersStreamProvider] filtered by search text (matches name or
