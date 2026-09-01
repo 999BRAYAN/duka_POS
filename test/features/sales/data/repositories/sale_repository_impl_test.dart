@@ -2,10 +2,51 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
+import 'package:duka_pos/features/inventory/domain/repositories/stock_movement_repository.dart';
 import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
 import 'package:duka_pos/features/sales/domain/exceptions.dart';
 import 'package:duka_pos/features/sales/domain/models/cart_line.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// Decorates a real [StockMovementRepository] so the *first* stock deduction
+/// still actually runs (stock and the audit row are genuinely written
+/// inside the surrounding `db.transaction()`), then throws — simulating a
+/// failure partway through `completeSale`, after stock has moved but before
+/// the customer-balance write that follows the cart-line loop.
+class _ThrowsAfterFirstMovement implements StockMovementRepository {
+  _ThrowsAfterFirstMovement(this._real);
+  final StockMovementRepository _real;
+
+  @override
+  Future<StockMovement> recordMovement({
+    required int productId,
+    required String type,
+    required double quantity,
+    double? unitCost,
+    String? reference,
+    String? notes,
+    int? userId,
+  }) async {
+    await _real.recordMovement(
+      productId: productId,
+      type: type,
+      quantity: quantity,
+      unitCost: unitCost,
+      reference: reference,
+      notes: notes,
+      userId: userId,
+    );
+    throw Exception('Simulated failure after stock deduction');
+  }
+
+  @override
+  Stream<List<StockMovement>> watchMovementsForProduct(int productId) =>
+      _real.watchMovementsForProduct(productId);
+
+  @override
+  Stream<List<StockMovement>> watchRecentMovements({int limit = 50}) =>
+      _real.watchRecentMovements(limit: limit);
+}
 
 void main() {
   late DukaDatabase db;
@@ -483,5 +524,45 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test(
+      'a failure after stock has been deducted rolls back the whole transaction: '
+      'stock, sales, and customer balance are all left unchanged',
+      () async {
+        final sodaId = await addProduct('Soda', stock: 20, costPrice: 40);
+        final customerId = await addCustomer('Jane', creditLimit: 1000, currentBalance: 10);
+
+        final flakyRepo = SaleRepositoryImpl(
+          db,
+          _ThrowsAfterFirstMovement(StockMovementRepositoryImpl(db)),
+        );
+
+        await expectLater(
+          flakyRepo.completeSale(
+            cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 3)],
+            customerId: customerId,
+            userId: userId,
+            paymentMethod: 'cash',
+            amountPaid: 100, // leaves a balance due, so the customer row would be touched
+          ),
+          throwsException,
+        );
+
+        final product = await (db.select(
+          db.products,
+        )..where((t) => t.id.equals(sodaId))).getSingle();
+        expect(product.stock, 20, reason: 'the stock deduction itself must have rolled back');
+
+        expect(await repo.watchSales().first, isEmpty, reason: 'no sale row should be committed');
+
+        final movements = await db.select(db.stockMovements).get();
+        expect(movements, isEmpty, reason: 'the stock movement audit row must roll back too');
+
+        final customer = await (db.select(
+          db.customers,
+        )..where((t) => t.id.equals(customerId))).getSingle();
+        expect(customer.currentBalance, 10, reason: 'never reached — but confirm it stayed put');
+      },
+    );
   });
 }
