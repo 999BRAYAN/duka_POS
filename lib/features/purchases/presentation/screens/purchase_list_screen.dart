@@ -1,4 +1,4 @@
-import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/purchases/presentation/providers/purchase_list_providers.dart';
@@ -49,7 +49,7 @@ class _PurchaseListScreenState extends ConsumerState<PurchaseListScreen> {
       appBar: AppBar(
         title: const Text('Purchases'),
         actions: [
-          const ActingAsBadge(),
+          const AccountMenu(),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton.icon(

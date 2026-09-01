@@ -1,6 +1,6 @@
 import 'package:duka_pos/core/authorization/authorization_exceptions.dart';
 import 'package:duka_pos/core/authorization/current_user_provider.dart';
-import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/printing/receipt_pdf.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
@@ -301,7 +301,7 @@ class _SaleScreenState extends ConsumerState<SaleScreen> {
               );
             },
           ),
-          const ActingAsBadge(),
+          const AccountMenu(),
         ],
       ),
       body: Padding(

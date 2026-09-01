@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/backup/backup.dart';
 import 'package:duka_pos/core/database/providers.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
@@ -50,7 +50,7 @@ class DashboardScreen extends ConsumerWidget {
               onPressed: () => _restoreFromBackup(context, ref),
             ),
           ],
-          const ActingAsBadge(),
+          const AccountMenu(),
         ],
       ),
       body: Padding(

@@ -1,4 +1,4 @@
-import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/customers/presentation/screens/customer_list_screen.dart';
@@ -49,42 +49,60 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products'),
+        // One primary action, everything else behind a single menu. Five
+        // separate action buttons plus the account chip overflowed this bar
+        // at ordinary window widths, and each new screen made it worse.
         actions: [
-          const ActingAsBadge(),
-          IconButton(
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const DashboardScreen())),
-            icon: const Icon(Icons.dashboard_outlined),
-            tooltip: 'Dashboard',
-          ),
-          IconButton(
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const ReportsScreen())),
-            icon: const Icon(Icons.bar_chart_outlined),
-            tooltip: 'Reports',
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CustomerListScreen()),
+          PopupMenuButton<String>(
+            tooltip: 'Go to',
+            position: PopupMenuPosition.under,
+            icon: const Icon(Icons.apps_outlined),
+            onSelected: (value) {
+              final screen = switch (value) {
+                'dashboard' => const DashboardScreen(),
+                'reports' => const ReportsScreen(),
+                'customers' => const CustomerListScreen(),
+                'purchases' => const PurchaseListScreen(),
+                _ => const DashboardScreen(),
+              };
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'dashboard',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.dashboard_outlined),
+                  title: Text('Dashboard'),
+                ),
               ),
-              icon: const Icon(Icons.people_outline, size: 18),
-              label: const Text('Customers'),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PurchaseListScreen()),
+              PopupMenuItem(
+                value: 'reports',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.bar_chart_outlined),
+                  title: Text('Reports'),
+                ),
               ),
-              icon: const Icon(Icons.local_shipping_outlined, size: 18),
-              label: const Text('Purchases'),
-            ),
+              PopupMenuItem(
+                value: 'customers',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.people_outline),
+                  title: Text('Customers'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'purchases',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.local_shipping_outlined),
+                  title: Text('Purchases'),
+                ),
+              ),
+            ],
           ),
+          const AccountMenu(),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton.icon(

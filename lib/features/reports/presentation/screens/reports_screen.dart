@@ -1,4 +1,4 @@
-import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/core/utilities/date_range.dart';
 import 'package:duka_pos/features/inventory/domain/models/product_stock_valuation.dart';
@@ -40,7 +40,7 @@ class ReportsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Reports'),
-          actions: const [ActingAsBadge()],
+          actions: const [AccountMenu()],
           bottom: const TabBar(
             tabs: [Tab(text: 'Sales'), Tab(text: 'Profit & loss'), Tab(text: 'Inventory')],
           ),

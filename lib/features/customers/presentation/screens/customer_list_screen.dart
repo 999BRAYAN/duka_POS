@@ -1,4 +1,4 @@
-import 'package:duka_pos/core/authorization/presentation/acting_as_badge.dart';
+import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/credit/presentation/screens/receive_payment_screen.dart';
@@ -43,7 +43,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
       appBar: AppBar(
         title: const Text('Customers'),
         actions: [
-          const ActingAsBadge(),
+          const AccountMenu(),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton.icon(
