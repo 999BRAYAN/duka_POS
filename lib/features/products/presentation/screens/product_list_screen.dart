@@ -1,12 +1,16 @@
+import 'package:duka_pos/core/authorization/permission.dart';
 import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
+import 'package:duka_pos/core/authorization/providers.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:duka_pos/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:duka_pos/features/products/presentation/providers/product_list_providers.dart';
+import 'package:duka_pos/features/products/presentation/screens/product_form_screen.dart';
 import 'package:duka_pos/features/purchases/presentation/screens/purchase_list_screen.dart';
 import 'package:duka_pos/features/reports/presentation/screens/reports_screen.dart';
 import 'package:duka_pos/features/sales/presentation/screens/sale_screen.dart';
+import 'package:duka_pos/features/suppliers/presentation/screens/supplier_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -45,6 +49,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     final categoriesAsync = ref.watch(categoriesStreamProvider);
     final categories = categoriesAsync.valueOrNull ?? const <Category>[];
     final categoryById = {for (final c in categories) c.id: c};
+    final canManageProducts = ref
+        .watch(authorizationServiceProvider)
+        .can(Permission.manageProducts);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,6 +70,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 'reports' => const ReportsScreen(),
                 'customers' => const CustomerListScreen(),
                 'purchases' => const PurchaseListScreen(),
+                'suppliers' => const SupplierListScreen(),
                 _ => const DashboardScreen(),
               };
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
@@ -100,9 +108,28 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   title: Text('Purchases'),
                 ),
               ),
+              PopupMenuItem(
+                value: 'suppliers',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.store_outlined),
+                  title: Text('Suppliers'),
+                ),
+              ),
             ],
           ),
           const AccountMenu(),
+          // Icon-only on purpose: this bar has repeatedly overflowed at
+          // ordinary window widths, and "New sale" is the one action that
+          // earns a label here.
+          if (canManageProducts)
+            IconButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProductFormScreen()),
+              ),
+              icon: const Icon(Icons.add_box_outlined),
+              tooltip: 'Add product',
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton.icon(
@@ -126,7 +153,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               child: productsAsync.when(
                 data: (products) => products.isEmpty
                     ? const _EmptyState()
-                    : _ProductTable(products: products, categoryById: categoryById),
+                    : _ProductTable(
+                        products: products,
+                        categoryById: categoryById,
+                        canManage: canManageProducts,
+                      ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(child: Text('Failed to load products: $error')),
               ),
@@ -194,10 +225,15 @@ class _FilterBar extends ConsumerWidget {
 }
 
 class _ProductTable extends StatelessWidget {
-  const _ProductTable({required this.products, required this.categoryById});
+  const _ProductTable({
+    required this.products,
+    required this.categoryById,
+    required this.canManage,
+  });
 
   final List<Product> products;
   final Map<int, Category> categoryById;
+  final bool canManage;
 
   @override
   Widget build(BuildContext context) {
@@ -212,22 +248,23 @@ class _ProductTable extends StatelessWidget {
             dataRowMaxHeight: 40,
             columnSpacing: 32,
             horizontalMargin: 16,
-            columns: const [
-              DataColumn(label: Text('Name')),
-              DataColumn(label: Text('SKU')),
-              DataColumn(label: Text('Category')),
-              DataColumn(label: Text('Stock'), numeric: true),
-              DataColumn(label: Text('Cost'), numeric: true),
-              DataColumn(label: Text('Price'), numeric: true),
+            columns: [
+              const DataColumn(label: Text('Name')),
+              const DataColumn(label: Text('SKU')),
+              const DataColumn(label: Text('Category')),
+              const DataColumn(label: Text('Stock'), numeric: true),
+              const DataColumn(label: Text('Cost'), numeric: true),
+              const DataColumn(label: Text('Price'), numeric: true),
+              if (canManage) const DataColumn(label: Text('')),
             ],
-            rows: [for (final product in products) _row(product)],
+            rows: [for (final product in products) _row(context, product)],
           ),
         ),
       ),
     );
   }
 
-  DataRow _row(Product product) {
+  DataRow _row(BuildContext context, Product product) {
     final isLowStock = product.stock <= product.reorderLevel;
     final category = categoryById[product.categoryId];
 
@@ -253,6 +290,17 @@ class _ProductTable extends StatelessWidget {
         ),
         DataCell(Text(_priceFormat.format(product.costPrice))),
         DataCell(Text(_priceFormat.format(product.sellingPrice))),
+        if (canManage)
+          DataCell(
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ProductFormScreen(product: product),
+                ),
+              ),
+              child: const Text('Edit'),
+            ),
+          ),
       ],
     );
   }
