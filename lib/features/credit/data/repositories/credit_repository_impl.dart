@@ -21,7 +21,7 @@ class CreditRepositoryImpl implements CreditRepository {
       saleId: saleId,
       type: 'CHARGE',
       amount: amount,
-      balanceDelta: amount,
+      computeBalanceAfter: (currentBalance) => currentBalance + amount,
       notes: notes,
     );
   }
@@ -30,6 +30,7 @@ class CreditRepositoryImpl implements CreditRepository {
   Future<CreditTransaction> recordPayment({
     required int customerId,
     required double amount,
+    required String method,
     String? notes,
   }) {
     return _applyTransaction(
@@ -37,7 +38,12 @@ class CreditRepositoryImpl implements CreditRepository {
       saleId: null,
       type: 'PAYMENT',
       amount: amount,
-      balanceDelta: -amount,
+      // Floored at zero: an overpayment (or a payment recorded against a
+      // stale balance) should never leave the customer showing a negative
+      // balance. A CHARGE has no equivalent upper bound to worry about.
+      computeBalanceAfter: (currentBalance) =>
+          currentBalance - amount < 0 ? 0 : currentBalance - amount,
+      method: method,
       notes: notes,
     );
   }
@@ -47,7 +53,8 @@ class CreditRepositoryImpl implements CreditRepository {
     required int? saleId,
     required String type,
     required double amount,
-    required double balanceDelta,
+    required double Function(double currentBalance) computeBalanceAfter,
+    String? method,
     required String? notes,
   }) {
     return _db.transaction(() async {
@@ -55,7 +62,7 @@ class CreditRepositoryImpl implements CreditRepository {
       final customer = await (_db.select(
         _db.customers,
       )..where((t) => t.id.equals(customerId))).getSingle();
-      final balanceAfter = customer.currentBalance + balanceDelta;
+      final balanceAfter = computeBalanceAfter(customer.currentBalance);
 
       final transaction = await _db.into(_db.creditTransactions).insertReturning(
         CreditTransactionsCompanion.insert(
@@ -65,6 +72,7 @@ class CreditRepositoryImpl implements CreditRepository {
           type: type,
           amount: amount,
           balanceAfter: balanceAfter,
+          method: Value(method),
           notes: Value(notes),
           createdAt: now,
         ),

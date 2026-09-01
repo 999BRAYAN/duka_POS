@@ -12,6 +12,10 @@ class CreditTransactions extends Table {
   TextColumn get type => text()();
   RealColumn get amount => real()();
   RealColumn get balanceAfter => real()();
+  // How a PAYMENT was taken (cash, mpesa, card — same free-form convention
+  // as Sales.paymentMethod). Null for CHARGE rows, which have no payment
+  // method of their own — the originating Sale already carries one.
+  TextColumn get method => text().nullable()();
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime().nullable()();

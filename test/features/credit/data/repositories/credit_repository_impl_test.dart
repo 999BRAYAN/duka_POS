@@ -33,16 +33,30 @@ void main() {
 
   test('recordPayment decreases balance and records a PAYMENT transaction', () async {
     await repo.chargeCustomer(customerId: customerId, amount: 500);
-    final txn = await repo.recordPayment(customerId: customerId, amount: 200);
+    final txn = await repo.recordPayment(customerId: customerId, amount: 200, method: 'cash');
 
     expect(txn.type, 'PAYMENT');
+    expect(txn.method, 'cash');
     expect(txn.balanceAfter, 300);
     expect(await repo.getCustomerBalance(customerId), 300);
   });
 
+  test('recordPayment never takes the balance below zero', () async {
+    await repo.chargeCustomer(customerId: customerId, amount: 200);
+    final txn = await repo.recordPayment(customerId: customerId, amount: 500, method: 'cash');
+
+    expect(txn.balanceAfter, 0);
+    expect(await repo.getCustomerBalance(customerId), 0);
+  });
+
+  test('chargeCustomer records no payment method', () async {
+    final txn = await repo.chargeCustomer(customerId: customerId, amount: 500);
+    expect(txn.method, isNull);
+  });
+
   test('watchTransactionsForCustomer returns newest first', () async {
     await repo.chargeCustomer(customerId: customerId, amount: 500);
-    await repo.recordPayment(customerId: customerId, amount: 200);
+    await repo.recordPayment(customerId: customerId, amount: 200, method: 'cash');
 
     final transactions = await repo.watchTransactionsForCustomer(customerId).first;
     expect(transactions.map((t) => t.type), ['PAYMENT', 'CHARGE']);

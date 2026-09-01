@@ -6614,6 +6614,15 @@ class $CreditTransactionsTable extends CreditTransactions
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _methodMeta = const VerificationMeta('method');
+  @override
+  late final GeneratedColumn<String> method = GeneratedColumn<String>(
+    'method',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -6654,6 +6663,7 @@ class $CreditTransactionsTable extends CreditTransactions
     type,
     amount,
     balanceAfter,
+    method,
     notes,
     createdAt,
     updatedAt,
@@ -6722,6 +6732,12 @@ class $CreditTransactionsTable extends CreditTransactions
     } else if (isInserting) {
       context.missing(_balanceAfterMeta);
     }
+    if (data.containsKey('method')) {
+      context.handle(
+        _methodMeta,
+        method.isAcceptableOrUnknown(data['method']!, _methodMeta),
+      );
+    }
     if (data.containsKey('notes')) {
       context.handle(
         _notesMeta,
@@ -6779,6 +6795,10 @@ class $CreditTransactionsTable extends CreditTransactions
         DriftSqlType.double,
         data['${effectivePrefix}balance_after'],
       )!,
+      method: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}method'],
+      ),
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -6809,6 +6829,7 @@ class CreditTransaction extends DataClass
   final String type;
   final double amount;
   final double balanceAfter;
+  final String? method;
   final String? notes;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -6820,6 +6841,7 @@ class CreditTransaction extends DataClass
     required this.type,
     required this.amount,
     required this.balanceAfter,
+    this.method,
     this.notes,
     required this.createdAt,
     this.updatedAt,
@@ -6836,6 +6858,9 @@ class CreditTransaction extends DataClass
     map['type'] = Variable<String>(type);
     map['amount'] = Variable<double>(amount);
     map['balance_after'] = Variable<double>(balanceAfter);
+    if (!nullToAbsent || method != null) {
+      map['method'] = Variable<String>(method);
+    }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -6857,6 +6882,9 @@ class CreditTransaction extends DataClass
       type: Value(type),
       amount: Value(amount),
       balanceAfter: Value(balanceAfter),
+      method: method == null && nullToAbsent
+          ? const Value.absent()
+          : Value(method),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
@@ -6880,6 +6908,7 @@ class CreditTransaction extends DataClass
       type: serializer.fromJson<String>(json['type']),
       amount: serializer.fromJson<double>(json['amount']),
       balanceAfter: serializer.fromJson<double>(json['balanceAfter']),
+      method: serializer.fromJson<String?>(json['method']),
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -6896,6 +6925,7 @@ class CreditTransaction extends DataClass
       'type': serializer.toJson<String>(type),
       'amount': serializer.toJson<double>(amount),
       'balanceAfter': serializer.toJson<double>(balanceAfter),
+      'method': serializer.toJson<String?>(method),
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -6910,6 +6940,7 @@ class CreditTransaction extends DataClass
     String? type,
     double? amount,
     double? balanceAfter,
+    Value<String?> method = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -6921,6 +6952,7 @@ class CreditTransaction extends DataClass
     type: type ?? this.type,
     amount: amount ?? this.amount,
     balanceAfter: balanceAfter ?? this.balanceAfter,
+    method: method.present ? method.value : this.method,
     notes: notes.present ? notes.value : this.notes,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -6938,6 +6970,7 @@ class CreditTransaction extends DataClass
       balanceAfter: data.balanceAfter.present
           ? data.balanceAfter.value
           : this.balanceAfter,
+      method: data.method.present ? data.method.value : this.method,
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -6954,6 +6987,7 @@ class CreditTransaction extends DataClass
           ..write('type: $type, ')
           ..write('amount: $amount, ')
           ..write('balanceAfter: $balanceAfter, ')
+          ..write('method: $method, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -6970,6 +7004,7 @@ class CreditTransaction extends DataClass
     type,
     amount,
     balanceAfter,
+    method,
     notes,
     createdAt,
     updatedAt,
@@ -6985,6 +7020,7 @@ class CreditTransaction extends DataClass
           other.type == this.type &&
           other.amount == this.amount &&
           other.balanceAfter == this.balanceAfter &&
+          other.method == this.method &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -6998,6 +7034,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
   final Value<String> type;
   final Value<double> amount;
   final Value<double> balanceAfter;
+  final Value<String?> method;
   final Value<String?> notes;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
@@ -7009,6 +7046,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
     this.type = const Value.absent(),
     this.amount = const Value.absent(),
     this.balanceAfter = const Value.absent(),
+    this.method = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -7021,6 +7059,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
     required String type,
     required double amount,
     required double balanceAfter,
+    this.method = const Value.absent(),
     this.notes = const Value.absent(),
     required DateTime createdAt,
     this.updatedAt = const Value.absent(),
@@ -7038,6 +7077,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
     Expression<String>? type,
     Expression<double>? amount,
     Expression<double>? balanceAfter,
+    Expression<String>? method,
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -7050,6 +7090,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
       if (type != null) 'type': type,
       if (amount != null) 'amount': amount,
       if (balanceAfter != null) 'balance_after': balanceAfter,
+      if (method != null) 'method': method,
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -7064,6 +7105,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
     Value<String>? type,
     Value<double>? amount,
     Value<double>? balanceAfter,
+    Value<String?>? method,
     Value<String?>? notes,
     Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -7076,6 +7118,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
       type: type ?? this.type,
       amount: amount ?? this.amount,
       balanceAfter: balanceAfter ?? this.balanceAfter,
+      method: method ?? this.method,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -7106,6 +7149,9 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
     if (balanceAfter.present) {
       map['balance_after'] = Variable<double>(balanceAfter.value);
     }
+    if (method.present) {
+      map['method'] = Variable<String>(method.value);
+    }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
@@ -7128,6 +7174,7 @@ class CreditTransactionsCompanion extends UpdateCompanion<CreditTransaction> {
           ..write('type: $type, ')
           ..write('amount: $amount, ')
           ..write('balanceAfter: $balanceAfter, ')
+          ..write('method: $method, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -13354,6 +13401,7 @@ typedef $$CreditTransactionsTableCreateCompanionBuilder =
       required String type,
       required double amount,
       required double balanceAfter,
+      Value<String?> method,
       Value<String?> notes,
       required DateTime createdAt,
       Value<DateTime?> updatedAt,
@@ -13367,6 +13415,7 @@ typedef $$CreditTransactionsTableUpdateCompanionBuilder =
       Value<String> type,
       Value<double> amount,
       Value<double> balanceAfter,
+      Value<String?> method,
       Value<String?> notes,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
@@ -13454,6 +13503,11 @@ class $$CreditTransactionsTableFilterComposer
 
   ColumnFilters<double> get balanceAfter => $composableBuilder(
     column: $table.balanceAfter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get method => $composableBuilder(
+    column: $table.method,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13553,6 +13607,11 @@ class $$CreditTransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
@@ -13640,6 +13699,9 @@ class $$CreditTransactionsTableAnnotationComposer
     column: $table.balanceAfter,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get method =>
+      $composableBuilder(column: $table.method, builder: (column) => column);
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
@@ -13737,6 +13799,7 @@ class $$CreditTransactionsTableTableManager
                 Value<String> type = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<double> balanceAfter = const Value.absent(),
+                Value<String?> method = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -13748,6 +13811,7 @@ class $$CreditTransactionsTableTableManager
                 type: type,
                 amount: amount,
                 balanceAfter: balanceAfter,
+                method: method,
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13761,6 +13825,7 @@ class $$CreditTransactionsTableTableManager
                 required String type,
                 required double amount,
                 required double balanceAfter,
+                Value<String?> method = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -13772,6 +13837,7 @@ class $$CreditTransactionsTableTableManager
                 type: type,
                 amount: amount,
                 balanceAfter: balanceAfter,
+                method: method,
                 notes: notes,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

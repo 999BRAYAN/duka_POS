@@ -46,7 +46,7 @@ class DukaDatabase extends _$DukaDatabase {
   DukaDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +68,9 @@ class DukaDatabase extends _$DukaDatabase {
       }
       if (from < 5) {
         await m.addColumn(customers, customers.isWalkIn);
+      }
+      if (from < 6) {
+        await m.addColumn(creditTransactions, creditTransactions.method);
       }
     },
   );
