@@ -13,6 +13,7 @@ const _rolePermissions = <String, Set<Permission>>{
     Permission.processSale,
     Permission.manageCustomers,
     Permission.overrideCreditLimit,
+    Permission.manageExpenses,
   },
   'manager': {
     Permission.manageProducts,
@@ -21,6 +22,7 @@ const _rolePermissions = <String, Set<Permission>>{
     Permission.processSale,
     Permission.manageCustomers,
     Permission.overrideCreditLimit,
+    Permission.manageExpenses,
   },
   // Cashiers can't touch the catalog, inventory, or purchasing, but
   // ringing up a sale is their job — this is the one permission they hold.

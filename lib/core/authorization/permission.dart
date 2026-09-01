@@ -7,4 +7,5 @@ enum Permission {
   processSale,
   manageCustomers,
   overrideCreditLimit,
+  manageExpenses,
 }
