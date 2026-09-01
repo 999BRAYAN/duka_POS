@@ -15,8 +15,17 @@ class CustomerLedgerRepositoryImpl implements CustomerLedgerRepository {
     // against the customer's creditLimit, regardless of what
     // paymentMethod is literally labeled. A fully-paid sale never touches
     // Customers.currentBalance, so it has no place in this ledger.
+    //
+    // Void sales are excluded because voidSale now reverses its charge
+    // against Customers.currentBalance. This filter and that reversal are
+    // one decision: leave a void sale in the ledger and the running
+    // balance stops reconciling with the customer's stored balance by
+    // exactly the voided amount.
     final sales = await (_db.select(_db.sales)..where(
-      (t) => t.customerId.equals(customerId) & t.total.isBiggerThan(t.amountPaid),
+      (t) =>
+          t.customerId.equals(customerId) &
+          t.total.isBiggerThan(t.amountPaid) &
+          t.status.equals('void').not(),
     )).get();
 
     final payments = await (_db.select(_db.creditTransactions)..where(

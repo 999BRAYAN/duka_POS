@@ -51,6 +51,18 @@ class CustomerRequiredForCreditException implements Exception {
   String toString() => "A customer is required for payment method 'credit'.";
 }
 
+/// Thrown by [SaleRepository.voidSale] when the sale is already void.
+/// Voiding is not idempotent — it returns stock and credits the customer's
+/// balance — so a second void would return the goods twice.
+class SaleAlreadyVoidException implements Exception {
+  const SaleAlreadyVoidException({required this.invoiceNumber});
+
+  final String invoiceNumber;
+
+  @override
+  String toString() => 'Sale $invoiceNumber has already been voided.';
+}
+
 /// Thrown by [SaleRepository.completeSale] when a credit sale would push
 /// the customer's balance past their creditLimit, and no override was
 /// passed.

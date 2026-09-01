@@ -145,6 +145,132 @@ void main() {
     expect(movements.map((m) => m.type), containsAll(['SALE', 'RETURN']));
   });
 
+  group('voidSale and the customer balance', () {
+    late int customerId;
+
+    setUp(() async {
+      final customer = await db.into(db.customers).insertReturning(
+        CustomersCompanion.insert(
+          uuid: 'cust-void',
+          name: 'Joseph Kamau',
+          creditLimit: const Value(5000),
+          currentBalance: const Value(0),
+          createdAt: DateTime.now(),
+        ),
+      );
+      customerId = customer.id;
+    });
+
+    Future<Customer> readCustomer() => (db.select(
+      db.customers,
+    )..where((t) => t.id.equals(customerId))).getSingle();
+
+    Future<double> readStock() async =>
+        (await (db.select(db.products)..where((t) => t.id.equals(productId))).getSingle()).stock;
+
+    test('voiding a credit sale takes the debt back off the customer', () async {
+      final stockBefore = await readStock();
+      final balanceBefore = (await readCustomer()).currentBalance;
+
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', quantity: 3, price: 80)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 100,
+      );
+
+      // The sale left 140 owing, which must be on the customer first —
+      // otherwise the reversal below would prove nothing.
+      expect((await readCustomer()).currentBalance, 140);
+
+      await repo.voidSale(sale.uuid);
+
+      expect(
+        (await readCustomer()).currentBalance,
+        balanceBefore,
+        reason: 'a voided sale must not leave the customer owing for it',
+      );
+      expect(await readStock(), stockBefore);
+    });
+
+    test('voiding a fully-paid sale leaves the balance untouched', () async {
+      await db.into(db.creditTransactions).insert(
+        CreditTransactionsCompanion.insert(
+          uuid: 'ct-opening',
+          customerId: customerId,
+          type: 'CHARGE',
+          amount: 900,
+          balanceAfter: 900,
+          createdAt: DateTime.now(),
+        ),
+      );
+      await (db.update(db.customers)..where((t) => t.id.equals(customerId))).write(
+        const CustomersCompanion(currentBalance: Value(900)),
+      );
+
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', quantity: 2, price: 80)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'cash',
+        amountPaid: 160,
+      );
+
+      await repo.voidSale(sale.uuid);
+
+      expect(
+        (await readCustomer()).currentBalance,
+        900,
+        reason: 'this sale never charged the customer, so voiding it must not credit them',
+      );
+    });
+
+    test('the reversal is floored at zero when payments already cleared the debt', () async {
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', quantity: 3, price: 80)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 100,
+      );
+
+      // The customer settles up before anyone notices the sale was wrong.
+      await (db.update(db.customers)..where((t) => t.id.equals(customerId))).write(
+        const CustomersCompanion(currentBalance: Value(0)),
+      );
+
+      await repo.voidSale(sale.uuid);
+
+      expect(
+        (await readCustomer()).currentBalance,
+        0,
+        reason: 'the shop never ends up owing the customer money',
+      );
+    });
+
+    test('a sale cannot be voided twice', () async {
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', quantity: 3, price: 80)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 100,
+      );
+
+      await repo.voidSale(sale.uuid);
+      final stockAfterVoid = await readStock();
+
+      await expectLater(
+        repo.voidSale(sale.uuid),
+        throwsA(isA<SaleAlreadyVoidException>()),
+      );
+
+      expect(await readStock(), stockAfterVoid, reason: 'stock is not returned twice');
+      expect((await readCustomer()).currentBalance, 0);
+    });
+  });
+
   group('createSale price floor', () {
     Future<int> addProduct(String name, {required double minSellingPrice}) async {
       final product = await db.into(db.products).insertReturning(

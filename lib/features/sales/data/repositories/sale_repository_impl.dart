@@ -294,6 +294,12 @@ class SaleRepositoryImpl implements SaleRepository {
       )..where((t) => t.uuid.equals(uuid))).getSingle();
       final now = DateTime.now();
 
+      // Voiding twice would return the stock and credit the balance a
+      // second time, so it's refused rather than silently doubling both.
+      if (sale.status == 'void') {
+        throw SaleAlreadyVoidException(invoiceNumber: sale.invoiceNumber);
+      }
+
       final items = await (_db.select(
         _db.saleItems,
       )..where((t) => t.saleId.equals(sale.id))).get();
@@ -309,6 +315,32 @@ class SaleRepositoryImpl implements SaleRepository {
           quantity: item.quantity,
           unitCost: product.costPrice,
           reference: sale.uuid,
+        );
+      }
+
+      // The mirror of completeSale's balance write: whatever this sale
+      // added to the customer's balance comes back off it. Without this a
+      // voided credit sale returned the goods but kept the debt, leaving
+      // the customer owing for a sale that no longer exists.
+      //
+      // Floored at zero for the same reason CreditRepository.recordPayment
+      // floors: if payments have already been taken against this debt, the
+      // reversal must not drive the balance negative into a shop-owes-
+      // customer state this app has no concept of.
+      final balanceDue = sale.total - sale.amountPaid;
+      if (balanceDue > 0 && sale.customerId != null) {
+        final customer = await (_db.select(
+          _db.customers,
+        )..where((t) => t.id.equals(sale.customerId!))).getSingle();
+        final reversed = customer.currentBalance - balanceDue;
+
+        await (_db.update(
+          _db.customers,
+        )..where((t) => t.id.equals(customer.id))).write(
+          CustomersCompanion(
+            currentBalance: Value(reversed < 0 ? 0 : reversed),
+            updatedAt: Value(now),
+          ),
         );
       }
 

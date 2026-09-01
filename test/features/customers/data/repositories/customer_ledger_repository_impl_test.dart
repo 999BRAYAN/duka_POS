@@ -169,4 +169,43 @@ void main() {
   test('a customer with no activity gets an empty ledger', () async {
     expect(await ledgerRepo.getLedgerForCustomer(customerId), isEmpty);
   });
+
+  test(
+    'a voided credit sale leaves the ledger and the stored balance still reconciled',
+    () async {
+      final kept = await saleRepo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', price: 100, quantity: 4)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 100, // 300 left owing
+      );
+      final voided = await saleRepo.completeSale(
+        cart: [CartLine(productId: productId, name: 'Soda', price: 100, quantity: 2)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 0, // 200 left owing, then reversed below
+      );
+
+      await saleRepo.voidSale(voided.uuid);
+
+      final entries = await ledgerRepo.getLedgerForCustomer(customerId);
+      final customer = await (db.select(
+        db.customers,
+      )..where((t) => t.id.equals(customerId))).getSingle();
+
+      expect(
+        entries.map((e) => e.reference),
+        [kept.invoiceNumber],
+        reason: 'the voided sale is gone from the statement',
+      );
+      // The identity that matters: the ledger's own running total and the
+      // customer's stored balance still agree after a void. Either half of
+      // this fix alone would break it — the balance reversal without the
+      // filter double-counts, the filter without the reversal under-counts.
+      expect(entries.last.runningBalance, 300);
+      expect(customer.currentBalance, 300);
+    },
+  );
 }
