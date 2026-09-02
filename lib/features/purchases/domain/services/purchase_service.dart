@@ -36,4 +36,12 @@ class PurchaseService {
       amountPaid: amountPaid,
     );
   }
+
+  /// Same permission as receiving stock — recording a payment against an
+  /// already-received purchase is a sibling action, not a separate
+  /// capability.
+  Future<Purchase> recordPayment(String uuid, {required double amount}) {
+    _authorizationService.require(Permission.receiveStock);
+    return _repository.recordPayment(uuid, amount: amount);
+  }
 }

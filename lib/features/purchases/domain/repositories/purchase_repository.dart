@@ -44,6 +44,19 @@ abstract interface class PurchaseRepository {
     required double amountPaid,
   });
 
+  /// Records a payment against a purchase already marked 'received',
+  /// increasing [Purchase.amountPaid] and moving [Purchase.paymentStatus] to
+  /// 'partial' or 'paid' accordingly, while reducing the supplier's
+  /// [Supplier.balance] by the same amount (floored at zero). The only way a
+  /// purchase's payment status can change after it was received — there was
+  /// previously no path from 'unpaid'/'partial' to 'paid' once stock had
+  /// come in.
+  ///
+  /// Throws [InvalidPurchaseStatusException] if the purchase isn't
+  /// 'received', or [InvalidPurchasePaymentException] if [amount] isn't
+  /// positive or exceeds what's still owed (total minus amountPaid).
+  Future<Purchase> recordPayment(String uuid, {required double amount});
+
   Future<Purchase?> getPurchaseByUuid(String uuid);
 
   Future<List<PurchaseItem>> getItemsForPurchase(int purchaseId);

@@ -1,8 +1,11 @@
+import 'package:duka_pos/core/authorization/permission.dart';
+import 'package:duka_pos/core/authorization/providers.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/purchases/presentation/providers/purchase_list_providers.dart';
 import 'package:duka_pos/features/purchases/presentation/screens/receive_stock_screen.dart';
 import 'package:duka_pos/features/purchases/presentation/widgets/payment_status_chip.dart';
+import 'package:duka_pos/features/purchases/presentation/widgets/record_purchase_payment_dialog.dart';
 import 'package:duka_pos/features/suppliers/presentation/providers.dart';
 import 'package:duka_pos/core/navigation/app_drawer.dart';
 import 'package:duka_pos/core/navigation/app_scaffold.dart';
@@ -45,6 +48,9 @@ class _PurchaseListScreenState extends ConsumerState<PurchaseListScreen> {
     final suppliersAsync = ref.watch(suppliersStreamProvider);
     final suppliers = suppliersAsync.valueOrNull ?? const <Supplier>[];
     final supplierById = {for (final s in suppliers) s.id: s};
+    final canReceiveStock = ref
+        .watch(authorizationServiceProvider)
+        .can(Permission.receiveStock);
 
     return Scaffold(
       appBar: AppBar(
@@ -74,7 +80,11 @@ class _PurchaseListScreenState extends ConsumerState<PurchaseListScreen> {
               child: purchasesAsync.when(
                 data: (purchases) => purchases.isEmpty
                     ? const _EmptyState()
-                    : _PurchaseTable(purchases: purchases, supplierById: supplierById),
+                    : _PurchaseTable(
+                        purchases: purchases,
+                        supplierById: supplierById,
+                        canReceiveStock: canReceiveStock,
+                      ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(child: Text('Failed to load purchases: $error')),
               ),
@@ -136,10 +146,15 @@ class _FilterBar extends ConsumerWidget {
 }
 
 class _PurchaseTable extends StatelessWidget {
-  const _PurchaseTable({required this.purchases, required this.supplierById});
+  const _PurchaseTable({
+    required this.purchases,
+    required this.supplierById,
+    required this.canReceiveStock,
+  });
 
   final List<Purchase> purchases;
   final Map<int, Supplier> supplierById;
+  final bool canReceiveStock;
 
   @override
   Widget build(BuildContext context) {
@@ -154,23 +169,28 @@ class _PurchaseTable extends StatelessWidget {
             dataRowMaxHeight: 40,
             columnSpacing: 32,
             horizontalMargin: 16,
-            columns: const [
-              DataColumn(label: Text('PO Reference')),
-              DataColumn(label: Text('Supplier')),
-              DataColumn(label: Text('Date')),
-              DataColumn(label: Text('Total'), numeric: true),
-              DataColumn(label: Text('Amount Paid'), numeric: true),
-              DataColumn(label: Text('Status')),
+            columns: [
+              const DataColumn(label: Text('PO Reference')),
+              const DataColumn(label: Text('Supplier')),
+              const DataColumn(label: Text('Date')),
+              const DataColumn(label: Text('Total'), numeric: true),
+              const DataColumn(label: Text('Amount Paid'), numeric: true),
+              const DataColumn(label: Text('Status')),
+              if (canReceiveStock) const DataColumn(label: Text('')),
             ],
-            rows: [for (final purchase in purchases) _row(purchase)],
+            rows: [for (final purchase in purchases) _row(context, purchase)],
           ),
         ),
       ),
     );
   }
 
-  DataRow _row(Purchase purchase) {
+  DataRow _row(BuildContext context, Purchase purchase) {
     final supplierName = supplierById[purchase.supplierId]?.name ?? '—';
+    // Only a received purchase carries a real debt to settle, and only when
+    // something is still owed — a fully paid one has nothing left to record.
+    final canRecordPayment =
+        canReceiveStock && purchase.status == 'received' && purchase.paymentStatus != 'paid';
 
     return DataRow(
       cells: [
@@ -180,6 +200,18 @@ class _PurchaseTable extends StatelessWidget {
         DataCell(Text(_amountFormat.format(purchase.total))),
         DataCell(Text(_amountFormat.format(purchase.amountPaid))),
         DataCell(PaymentStatusChip(paymentStatus: purchase.paymentStatus)),
+        if (canReceiveStock)
+          DataCell(
+            canRecordPayment
+                ? TextButton(
+                    onPressed: () => showRecordPurchasePaymentDialog(
+                      context,
+                      purchase: purchase,
+                    ),
+                    child: const Text('Record payment'),
+                  )
+                : const SizedBox.shrink(),
+          ),
       ],
     );
   }

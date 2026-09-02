@@ -245,4 +245,100 @@ void main() {
       expect(purchases, isEmpty);
     });
   });
+
+  group('recordPayment', () {
+    test('a partial top-up moves paymentStatus to paid once it covers the total', () async {
+      final purchase = await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'partial',
+        amountPaid: 200,
+      );
+
+      final updated = await repo.recordPayment(purchase.uuid, amount: 100);
+
+      expect(updated.amountPaid, 300);
+      expect(updated.paymentStatus, 'paid');
+    });
+
+    test('a payment that still leaves a balance stays partial', () async {
+      final purchase = await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'unpaid',
+        amountPaid: 0,
+      );
+
+      final updated = await repo.recordPayment(purchase.uuid, amount: 120);
+
+      expect(updated.amountPaid, 120);
+      expect(updated.paymentStatus, 'partial');
+    });
+
+    test('reduces Supplier.balance by the amount paid', () async {
+      final purchase = await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'unpaid',
+        amountPaid: 0,
+      );
+
+      await repo.recordPayment(purchase.uuid, amount: 300);
+
+      final supplier = await (db.select(
+        db.suppliers,
+      )..where((t) => t.id.equals(supplierId))).getSingle();
+      expect(supplier.balance, 0);
+    });
+
+    test('rejects a payment exceeding what is owed and writes nothing', () async {
+      final purchase = await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'partial',
+        amountPaid: 200,
+      );
+
+      await expectLater(
+        repo.recordPayment(purchase.uuid, amount: 200),
+        throwsA(isA<InvalidPurchasePaymentException>()),
+      );
+
+      final unchanged = await repo.getPurchaseByUuid(purchase.uuid);
+      expect(unchanged?.amountPaid, 200);
+      expect(unchanged?.paymentStatus, 'partial');
+    });
+
+    test('rejects a non-positive amount', () async {
+      final purchase = await repo.receiveStock(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+        paymentStatus: 'unpaid',
+        amountPaid: 0,
+      );
+
+      await expectLater(
+        repo.recordPayment(purchase.uuid, amount: 0),
+        throwsA(isA<InvalidPurchasePaymentException>()),
+      );
+    });
+
+    test('refuses a payment against a purchase still pending', () async {
+      final purchase = await repo.createPurchase(
+        supplierId: supplierId,
+        userId: userId,
+        items: [item(quantity: 10, total: 300)],
+      );
+
+      await expectLater(
+        repo.recordPayment(purchase.uuid, amount: 100),
+        throwsA(isA<InvalidPurchaseStatusException>()),
+      );
+    });
+  });
 }

@@ -201,6 +201,60 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
   }
 
   @override
+  Future<Purchase> recordPayment(String uuid, {required double amount}) {
+    return _db.transaction(() async {
+      final purchase = await (_db.select(
+        _db.purchases,
+      )..where((t) => t.uuid.equals(uuid))).getSingle();
+
+      if (purchase.status != 'received') {
+        throw InvalidPurchaseStatusException(
+          "Cannot record a payment: this purchase is '${purchase.status}', "
+          "not 'received'.",
+        );
+      }
+
+      final outstanding = purchase.total - purchase.amountPaid;
+      if (amount <= 0 || amount > outstanding) {
+        throw InvalidPurchasePaymentException(
+          'Payment of $amount is invalid: '
+          '${outstanding.toStringAsFixed(2)} is owed on this purchase.',
+        );
+      }
+
+      final now = DateTime.now();
+      final newAmountPaid = purchase.amountPaid + amount;
+
+      await (_db.update(
+        _db.purchases,
+      )..where((t) => t.uuid.equals(uuid))).write(
+        PurchasesCompanion(
+          amountPaid: Value(newAmountPaid),
+          paymentStatus: Value(newAmountPaid >= purchase.total ? 'paid' : 'partial'),
+          updatedAt: Value(now),
+        ),
+      );
+
+      final supplier = await (_db.select(
+        _db.suppliers,
+      )..where((t) => t.id.equals(purchase.supplierId))).getSingle();
+
+      await (_db.update(
+        _db.suppliers,
+      )..where((t) => t.id.equals(purchase.supplierId))).write(
+        SuppliersCompanion(
+          balance: Value(supplier.balance - amount < 0 ? 0 : supplier.balance - amount),
+          updatedAt: Value(now),
+        ),
+      );
+
+      return (_db.select(
+        _db.purchases,
+      )..where((t) => t.uuid.equals(uuid))).getSingle();
+    });
+  }
+
+  @override
   Future<void> cancelPurchase(String uuid) async {
     final purchase = await (_db.select(
       _db.purchases,

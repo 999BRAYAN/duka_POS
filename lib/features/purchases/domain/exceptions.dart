@@ -21,3 +21,14 @@ class InvalidPaymentStatusException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Thrown by [PurchaseRepository.recordPayment] when the amount isn't
+/// positive, or exceeds what's still owed on the purchase.
+class InvalidPurchasePaymentException implements Exception {
+  const InvalidPurchasePaymentException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
