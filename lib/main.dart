@@ -31,6 +31,7 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Duka POS',
+      debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       darkTheme: buildAppDarkTheme(),
       themeMode: ref.watch(themeModeProvider),
