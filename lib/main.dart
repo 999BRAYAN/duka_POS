@@ -14,7 +14,12 @@ void main() async {
   unawaited(requestPersistentStorage());
 
   final container = ProviderContainer();
-  await seedWalkInCustomer(container);
+  // Not awaited: this opens the WASM database (worker spin-up + OPFS open),
+  // which can take real time on a first visit. Awaiting it here blocked
+  // runApp() itself, so the browser painted nothing at all — not even
+  // AuthGate's own loading spinner — until it finished. Firing it in the
+  // background lets the app show that spinner immediately instead.
+  unawaited(seedWalkInCustomer(container));
 
   runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }
