@@ -67,7 +67,9 @@ void main() {
     await tester.tap(find.text('Acme Traders').last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<int>, 'Product'));
+    // The product picker is a type-ahead now: type part of the name, then
+    // choose from the matches it offers.
+    await tester.enterText(find.widgetWithText(TextField, 'Product'), 'sod');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Soda').last);
     await tester.pumpAndSettle();
@@ -100,7 +102,9 @@ void main() {
   testWidgets('shows an error and saves nothing when no supplier is selected', (tester) async {
     await pumpScreen(tester);
 
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<int>, 'Product'));
+    // The product picker is a type-ahead now: type part of the name, then
+    // choose from the matches it offers.
+    await tester.enterText(find.widgetWithText(TextField, 'Product'), 'sod');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Soda').last);
     await tester.pumpAndSettle();

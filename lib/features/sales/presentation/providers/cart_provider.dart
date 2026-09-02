@@ -51,6 +51,21 @@ class CartNotifier extends Notifier<List<CartLine>> {
     ];
   }
 
+  /// Sets what this line will actually sell for.
+  ///
+  /// A hardware counter haggles: a plumber buying forty lengths does not pay
+  /// the shelf price. The floor still holds — SaleRepository.completeSale
+  /// checks every line against its product's minSellingPrice and refuses the
+  /// whole sale below it, so this can be offered freely without it becoming
+  /// a way to give stock away.
+  void setPrice(int productId, double price) {
+    if (price < 0) return;
+    state = [
+      for (final line in state)
+        if (line.productId == productId) line.copyWith(price: price) else line,
+    ];
+  }
+
   void removeLine(int productId) {
     state = state.where((line) => line.productId != productId).toList();
   }

@@ -3864,6 +3864,31 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
     requiredDuringInsert: false,
     defaultValue: const Constant('completed'),
   );
+  static const VerificationMeta _voidReasonMeta = const VerificationMeta(
+    'voidReason',
+  );
+  @override
+  late final GeneratedColumn<String> voidReason = GeneratedColumn<String>(
+    'void_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _voidedByUserIdMeta = const VerificationMeta(
+    'voidedByUserId',
+  );
+  @override
+  late final GeneratedColumn<int> voidedByUserId = GeneratedColumn<int>(
+    'voided_by_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES users (id)',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3902,6 +3927,8 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
     cogs,
     grossProfit,
     status,
+    voidReason,
+    voidedByUserId,
     createdAt,
     updatedAt,
   ];
@@ -4015,6 +4042,21 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('void_reason')) {
+      context.handle(
+        _voidReasonMeta,
+        voidReason.isAcceptableOrUnknown(data['void_reason']!, _voidReasonMeta),
+      );
+    }
+    if (data.containsKey('voided_by_user_id')) {
+      context.handle(
+        _voidedByUserIdMeta,
+        voidedByUserId.isAcceptableOrUnknown(
+          data['voided_by_user_id']!,
+          _voidedByUserIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4094,6 +4136,14 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      voidReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}void_reason'],
+      ),
+      voidedByUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}voided_by_user_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -4126,6 +4176,8 @@ class Sale extends DataClass implements Insertable<Sale> {
   final double cogs;
   final double grossProfit;
   final String status;
+  final String? voidReason;
+  final int? voidedByUserId;
   final DateTime createdAt;
   final DateTime? updatedAt;
   const Sale({
@@ -4143,6 +4195,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     required this.cogs,
     required this.grossProfit,
     required this.status,
+    this.voidReason,
+    this.voidedByUserId,
     required this.createdAt,
     this.updatedAt,
   });
@@ -4165,6 +4219,12 @@ class Sale extends DataClass implements Insertable<Sale> {
     map['cogs'] = Variable<double>(cogs);
     map['gross_profit'] = Variable<double>(grossProfit);
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || voidReason != null) {
+      map['void_reason'] = Variable<String>(voidReason);
+    }
+    if (!nullToAbsent || voidedByUserId != null) {
+      map['voided_by_user_id'] = Variable<int>(voidedByUserId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -4190,6 +4250,12 @@ class Sale extends DataClass implements Insertable<Sale> {
       cogs: Value(cogs),
       grossProfit: Value(grossProfit),
       status: Value(status),
+      voidReason: voidReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voidReason),
+      voidedByUserId: voidedByUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voidedByUserId),
       createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
@@ -4217,6 +4283,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       cogs: serializer.fromJson<double>(json['cogs']),
       grossProfit: serializer.fromJson<double>(json['grossProfit']),
       status: serializer.fromJson<String>(json['status']),
+      voidReason: serializer.fromJson<String?>(json['voidReason']),
+      voidedByUserId: serializer.fromJson<int?>(json['voidedByUserId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
@@ -4239,6 +4307,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       'cogs': serializer.toJson<double>(cogs),
       'grossProfit': serializer.toJson<double>(grossProfit),
       'status': serializer.toJson<String>(status),
+      'voidReason': serializer.toJson<String?>(voidReason),
+      'voidedByUserId': serializer.toJson<int?>(voidedByUserId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
@@ -4259,6 +4329,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     double? cogs,
     double? grossProfit,
     String? status,
+    Value<String?> voidReason = const Value.absent(),
+    Value<int?> voidedByUserId = const Value.absent(),
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
   }) => Sale(
@@ -4276,6 +4348,10 @@ class Sale extends DataClass implements Insertable<Sale> {
     cogs: cogs ?? this.cogs,
     grossProfit: grossProfit ?? this.grossProfit,
     status: status ?? this.status,
+    voidReason: voidReason.present ? voidReason.value : this.voidReason,
+    voidedByUserId: voidedByUserId.present
+        ? voidedByUserId.value
+        : this.voidedByUserId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
   );
@@ -4305,6 +4381,12 @@ class Sale extends DataClass implements Insertable<Sale> {
           ? data.grossProfit.value
           : this.grossProfit,
       status: data.status.present ? data.status.value : this.status,
+      voidReason: data.voidReason.present
+          ? data.voidReason.value
+          : this.voidReason,
+      voidedByUserId: data.voidedByUserId.present
+          ? data.voidedByUserId.value
+          : this.voidedByUserId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4327,6 +4409,8 @@ class Sale extends DataClass implements Insertable<Sale> {
           ..write('cogs: $cogs, ')
           ..write('grossProfit: $grossProfit, ')
           ..write('status: $status, ')
+          ..write('voidReason: $voidReason, ')
+          ..write('voidedByUserId: $voidedByUserId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4349,6 +4433,8 @@ class Sale extends DataClass implements Insertable<Sale> {
     cogs,
     grossProfit,
     status,
+    voidReason,
+    voidedByUserId,
     createdAt,
     updatedAt,
   );
@@ -4370,6 +4456,8 @@ class Sale extends DataClass implements Insertable<Sale> {
           other.cogs == this.cogs &&
           other.grossProfit == this.grossProfit &&
           other.status == this.status &&
+          other.voidReason == this.voidReason &&
+          other.voidedByUserId == this.voidedByUserId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4389,6 +4477,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
   final Value<double> cogs;
   final Value<double> grossProfit;
   final Value<String> status;
+  final Value<String?> voidReason;
+  final Value<int?> voidedByUserId;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
   const SalesCompanion({
@@ -4406,6 +4496,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     this.cogs = const Value.absent(),
     this.grossProfit = const Value.absent(),
     this.status = const Value.absent(),
+    this.voidReason = const Value.absent(),
+    this.voidedByUserId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -4424,6 +4516,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     this.cogs = const Value.absent(),
     this.grossProfit = const Value.absent(),
     this.status = const Value.absent(),
+    this.voidReason = const Value.absent(),
+    this.voidedByUserId = const Value.absent(),
     required DateTime createdAt,
     this.updatedAt = const Value.absent(),
   }) : uuid = Value(uuid),
@@ -4446,6 +4540,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     Expression<double>? cogs,
     Expression<double>? grossProfit,
     Expression<String>? status,
+    Expression<String>? voidReason,
+    Expression<int>? voidedByUserId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -4464,6 +4560,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       if (cogs != null) 'cogs': cogs,
       if (grossProfit != null) 'gross_profit': grossProfit,
       if (status != null) 'status': status,
+      if (voidReason != null) 'void_reason': voidReason,
+      if (voidedByUserId != null) 'voided_by_user_id': voidedByUserId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -4484,6 +4582,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     Value<double>? cogs,
     Value<double>? grossProfit,
     Value<String>? status,
+    Value<String?>? voidReason,
+    Value<int?>? voidedByUserId,
     Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
   }) {
@@ -4502,6 +4602,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       cogs: cogs ?? this.cogs,
       grossProfit: grossProfit ?? this.grossProfit,
       status: status ?? this.status,
+      voidReason: voidReason ?? this.voidReason,
+      voidedByUserId: voidedByUserId ?? this.voidedByUserId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -4552,6 +4654,12 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (voidReason.present) {
+      map['void_reason'] = Variable<String>(voidReason.value);
+    }
+    if (voidedByUserId.present) {
+      map['voided_by_user_id'] = Variable<int>(voidedByUserId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4578,6 +4686,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
           ..write('cogs: $cogs, ')
           ..write('grossProfit: $grossProfit, ')
           ..write('status: $status, ')
+          ..write('voidReason: $voidReason, ')
+          ..write('voidedByUserId: $voidedByUserId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -7772,25 +7882,6 @@ final class $$UsersTableReferences
     );
   }
 
-  static MultiTypedResultKey<$SalesTable, List<Sale>> _salesRefsTable(
-    _$DukaDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.sales,
-    aliasName: $_aliasNameGenerator(db.users.id, db.sales.userId),
-  );
-
-  $$SalesTableProcessedTableManager get salesRefs {
-    final manager = $$SalesTableTableManager(
-      $_db,
-      $_db.sales,
-    ).filter((f) => f.userId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_salesRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
   static MultiTypedResultKey<$PurchasesTable, List<Purchase>>
   _purchasesRefsTable(_$DukaDatabase db) => MultiTypedResultKey.fromTable(
     db.purchases,
@@ -7898,31 +7989,6 @@ class $$UsersTableFilterComposer extends Composer<_$DukaDatabase, $UsersTable> {
           }) => $$StockMovementsTableFilterComposer(
             $db: $db,
             $table: $db.stockMovements,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> salesRefs(
-    Expression<bool> Function($$SalesTableFilterComposer f) f,
-  ) {
-    final $$SalesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.sales,
-      getReferencedColumn: (t) => t.userId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SalesTableFilterComposer(
-            $db: $db,
-            $table: $db.sales,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8101,31 +8167,6 @@ class $$UsersTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> salesRefs<T extends Object>(
-    Expression<T> Function($$SalesTableAnnotationComposer a) f,
-  ) {
-    final $$SalesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.sales,
-      getReferencedColumn: (t) => t.userId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SalesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.sales,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
   Expression<T> purchasesRefs<T extends Object>(
     Expression<T> Function($$PurchasesTableAnnotationComposer a) f,
   ) {
@@ -8192,7 +8233,6 @@ class $$UsersTableTableManager
           User,
           PrefetchHooks Function({
             bool stockMovementsRefs,
-            bool salesRefs,
             bool purchasesRefs,
             bool expensesRefs,
           })
@@ -8261,7 +8301,6 @@ class $$UsersTableTableManager
           prefetchHooksCallback:
               ({
                 stockMovementsRefs = false,
-                salesRefs = false,
                 purchasesRefs = false,
                 expensesRefs = false,
               }) {
@@ -8269,7 +8308,6 @@ class $$UsersTableTableManager
                   db: db,
                   explicitlyWatchedTables: [
                     if (stockMovementsRefs) db.stockMovements,
-                    if (salesRefs) db.sales,
                     if (purchasesRefs) db.purchases,
                     if (expensesRefs) db.expenses,
                   ],
@@ -8291,19 +8329,6 @@ class $$UsersTableTableManager
                                 table,
                                 p0,
                               ).stockMovementsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.userId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (salesRefs)
-                        await $_getPrefetchedData<User, $UsersTable, Sale>(
-                          currentTable: table,
-                          referencedTable: $$UsersTableReferences
-                              ._salesRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$UsersTableReferences(db, table, p0).salesRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.userId == item.id,
@@ -8366,7 +8391,6 @@ typedef $$UsersTableProcessedTableManager =
       User,
       PrefetchHooks Function({
         bool stockMovementsRefs,
-        bool salesRefs,
         bool purchasesRefs,
         bool expensesRefs,
       })
@@ -10935,6 +10959,8 @@ typedef $$SalesTableCreateCompanionBuilder =
       Value<double> cogs,
       Value<double> grossProfit,
       Value<String> status,
+      Value<String?> voidReason,
+      Value<int?> voidedByUserId,
       required DateTime createdAt,
       Value<DateTime?> updatedAt,
     });
@@ -10954,6 +10980,8 @@ typedef $$SalesTableUpdateCompanionBuilder =
       Value<double> cogs,
       Value<double> grossProfit,
       Value<String> status,
+      Value<String?> voidReason,
+      Value<int?> voidedByUserId,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
     });
@@ -10990,6 +11018,23 @@ final class $$SalesTableReferences
       $_db.users,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $UsersTable _voidedByUserIdTable(_$DukaDatabase db) => db.users
+      .createAlias($_aliasNameGenerator(db.sales.voidedByUserId, db.users.id));
+
+  $$UsersTableProcessedTableManager? get voidedByUserId {
+    final $_column = $_itemColumn<int>('voided_by_user_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager(
+      $_db,
+      $_db.users,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_voidedByUserIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -11107,6 +11152,11 @@ class $$SalesTableFilterComposer extends Composer<_$DukaDatabase, $SalesTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -11144,6 +11194,29 @@ class $$SalesTableFilterComposer extends Composer<_$DukaDatabase, $SalesTable> {
     final $$UsersTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableFilterComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get voidedByUserId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.voidedByUserId,
       referencedTable: $db.users,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -11283,6 +11356,11 @@ class $$SalesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -11320,6 +11398,29 @@ class $$SalesTableOrderingComposer
     final $$UsersTableOrderingComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get voidedByUserId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.voidedByUserId,
       referencedTable: $db.users,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -11393,6 +11494,11 @@ class $$SalesTableAnnotationComposer
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
+  GeneratedColumn<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -11426,6 +11532,29 @@ class $$SalesTableAnnotationComposer
     final $$UsersTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get voidedByUserId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.voidedByUserId,
       referencedTable: $db.users,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -11513,6 +11642,7 @@ class $$SalesTableTableManager
           PrefetchHooks Function({
             bool customerId,
             bool userId,
+            bool voidedByUserId,
             bool saleItemsRefs,
             bool creditTransactionsRefs,
           })
@@ -11544,6 +11674,8 @@ class $$SalesTableTableManager
                 Value<double> cogs = const Value.absent(),
                 Value<double> grossProfit = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<String?> voidReason = const Value.absent(),
+                Value<int?> voidedByUserId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
               }) => SalesCompanion(
@@ -11561,6 +11693,8 @@ class $$SalesTableTableManager
                 cogs: cogs,
                 grossProfit: grossProfit,
                 status: status,
+                voidReason: voidReason,
+                voidedByUserId: voidedByUserId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -11580,6 +11714,8 @@ class $$SalesTableTableManager
                 Value<double> cogs = const Value.absent(),
                 Value<double> grossProfit = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<String?> voidReason = const Value.absent(),
+                Value<int?> voidedByUserId = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> updatedAt = const Value.absent(),
               }) => SalesCompanion.insert(
@@ -11597,6 +11733,8 @@ class $$SalesTableTableManager
                 cogs: cogs,
                 grossProfit: grossProfit,
                 status: status,
+                voidReason: voidReason,
+                voidedByUserId: voidedByUserId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -11610,6 +11748,7 @@ class $$SalesTableTableManager
               ({
                 customerId = false,
                 userId = false,
+                voidedByUserId = false,
                 saleItemsRefs = false,
                 creditTransactionsRefs = false,
               }) {
@@ -11657,6 +11796,19 @@ class $$SalesTableTableManager
                                         ._userIdTable(db),
                                     referencedColumn: $$SalesTableReferences
                                         ._userIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (voidedByUserId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.voidedByUserId,
+                                    referencedTable: $$SalesTableReferences
+                                        ._voidedByUserIdTable(db),
+                                    referencedColumn: $$SalesTableReferences
+                                        ._voidedByUserIdTable(db)
                                         .id,
                                   )
                                   as T;
@@ -11727,6 +11879,7 @@ typedef $$SalesTableProcessedTableManager =
       PrefetchHooks Function({
         bool customerId,
         bool userId,
+        bool voidedByUserId,
         bool saleItemsRefs,
         bool creditTransactionsRefs,
       })

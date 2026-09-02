@@ -295,7 +295,7 @@ class SaleRepositoryImpl implements SaleRepository {
   }
 
   @override
-  Future<void> voidSale(String uuid) {
+  Future<void> voidSale(String uuid, {String? reason, int? voidedByUserId}) {
     return _db.transaction(() async {
       final sale = await (_db.select(
         _db.sales,
@@ -342,7 +342,12 @@ class SaleRepositoryImpl implements SaleRepository {
       }
 
       await (_db.update(_db.sales)..where((t) => t.uuid.equals(uuid))).write(
-        SalesCompanion(status: const Value('void'), updatedAt: Value(now)),
+        SalesCompanion(
+          status: const Value('void'),
+          voidReason: Value(reason),
+          voidedByUserId: Value(voidedByUserId),
+          updatedAt: Value(now),
+        ),
       );
     });
   }

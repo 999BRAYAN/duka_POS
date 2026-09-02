@@ -8,6 +8,8 @@ import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/users/data/providers.dart';
 import 'package:duka_pos/features/users/presentation/providers.dart';
 import 'package:duka_pos/features/users/presentation/screens/user_form_screen.dart';
+import 'package:duka_pos/core/navigation/app_drawer.dart';
+import 'package:duka_pos/core/navigation/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,14 +40,15 @@ class UserListScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: !canManage
+      drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'staff'),
+      body: NavRail(destination: 'staff', child: !canManage
           ? const Center(child: Text('Only a manager can manage staff logins.'))
           : usersAsync.when(
               data: (users) => _table(context, ref, users, signedIn),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => Center(child: Text('Could not load staff: $error')),
             ),
-    );
+    ));
   }
 
   Widget _table(BuildContext context, WidgetRef ref, List<User> users, User? signedIn) {

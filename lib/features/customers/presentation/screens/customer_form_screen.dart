@@ -1,26 +1,52 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:duka_pos/core/authorization/authorization_exceptions.dart';
+import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/customers/data/providers.dart';
+import 'package:duka_pos/features/customers/domain/exceptions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Adds a new customer. Editing an existing one (beyond what the walk-in
-/// row's protection already covers) isn't built yet — out of scope here.
+/// Adds a customer, or edits one when [customer] is given.
+///
+/// The walk-in row is refused by CustomerService.updateCustomer even for a
+/// manager, so this form never opens for it — but the guard that matters
+/// lives in the service, not here.
 class CustomerFormScreen extends ConsumerStatefulWidget {
-  const CustomerFormScreen({super.key});
+  const CustomerFormScreen({this.customer, super.key});
+
+  final Customer? customer;
+
+  bool get isEditing => customer != null;
 
   @override
   ConsumerState<CustomerFormScreen> createState() => _CustomerFormScreenState();
 }
 
 class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _creditLimitController = TextEditingController(text: '0');
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _addressController;
+  late final TextEditingController _creditLimitController;
   bool _submitting = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.customer;
+    _nameController = TextEditingController(text: existing?.name ?? '');
+    _phoneController = TextEditingController(text: existing?.phone ?? '');
+    _emailController = TextEditingController(text: existing?.email ?? '');
+    _addressController = TextEditingController(text: existing?.address ?? '');
+    _creditLimitController = TextEditingController(
+      text: existing == null ? '0' : _plain(existing.creditLimit),
+    );
+  }
+
+  static String _plain(double value) =>
+      value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toString();
 
   @override
   void dispose() {
@@ -47,21 +73,39 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
     String? blankToNull(String value) => value.trim().isEmpty ? null : value.trim();
 
     try {
-      await ref.read(customerServiceProvider).addCustomer(
-        name: name,
-        phone: blankToNull(_phoneController.text),
-        email: blankToNull(_emailController.text),
-        address: blankToNull(_addressController.text),
-        creditLimit: double.tryParse(_creditLimitController.text) ?? 0,
-      );
+      final service = ref.read(customerServiceProvider);
+      final existing = widget.customer;
+
+      if (existing != null) {
+        await service.updateCustomer(
+          existing.copyWith(
+            name: name,
+            phone: Value(blankToNull(_phoneController.text)),
+            email: Value(blankToNull(_emailController.text)),
+            address: Value(blankToNull(_addressController.text)),
+            creditLimit: double.tryParse(_creditLimitController.text) ?? 0,
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+      } else {
+        await service.addCustomer(
+          name: name,
+          phone: blankToNull(_phoneController.text),
+          email: blankToNull(_emailController.text),
+          address: blankToNull(_addressController.text),
+          creditLimit: double.tryParse(_creditLimitController.text) ?? 0,
+        );
+      }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$name added.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.isEditing ? '$name updated.' : '$name added.')),
+      );
       Navigator.of(context).pop();
-    } on UnauthorizedException {
-      setState(() => _error = "You don't have permission to add a customer.");
+    } on UnauthorizedException catch (e) {
+      setState(() => _error = '$e');
+    } on WalkInCustomerNotEditableException catch (e) {
+      setState(() => _error = '$e');
     } catch (e) {
       setState(() => _error = 'Could not save this customer: $e');
     } finally {
@@ -72,7 +116,7 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add customer')),
+      appBar: AppBar(title: Text(widget.isEditing ? 'Edit customer' : 'Add customer')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -124,7 +168,7 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Add customer'),
+                      : Text(widget.isEditing ? 'Save changes' : 'Add customer'),
                 ),
               ],
             ),

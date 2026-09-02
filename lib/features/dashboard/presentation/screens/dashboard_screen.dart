@@ -1,12 +1,13 @@
 import 'dart:math';
 
-import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/backup/backup.dart';
 import 'package:duka_pos/core/database/providers.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/dashboard/presentation/providers/dashboard_providers.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:duka_pos/core/navigation/app_drawer.dart';
+import 'package:duka_pos/core/navigation/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -50,10 +51,10 @@ class DashboardScreen extends ConsumerWidget {
               onPressed: () => _restoreFromBackup(context, ref),
             ),
           ],
-          const AccountMenu(),
         ],
       ),
-      body: Padding(
+      drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'dashboard'),
+      body: NavRail(destination: 'dashboard', child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,7 +102,7 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 
   String _asyncText<T>(AsyncValue<T> value, String Function(T) format) {

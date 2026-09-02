@@ -1,17 +1,12 @@
 import 'package:duka_pos/core/authorization/permission.dart';
-import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/authorization/providers.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
-import 'package:duka_pos/features/customers/presentation/screens/customer_list_screen.dart';
-import 'package:duka_pos/features/dashboard/presentation/screens/dashboard_screen.dart';
-import 'package:duka_pos/features/expenses/presentation/screens/expenses_screen.dart';
 import 'package:duka_pos/features/products/presentation/providers/product_list_providers.dart';
 import 'package:duka_pos/features/products/presentation/screens/product_form_screen.dart';
-import 'package:duka_pos/features/purchases/presentation/screens/purchase_list_screen.dart';
-import 'package:duka_pos/features/reports/presentation/screens/reports_screen.dart';
 import 'package:duka_pos/features/sales/presentation/screens/sale_screen.dart';
-import 'package:duka_pos/features/suppliers/presentation/screens/supplier_list_screen.dart';
+import 'package:duka_pos/core/navigation/app_drawer.dart';
+import 'package:duka_pos/core/navigation/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -57,81 +52,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products'),
-        // One primary action, everything else behind a single menu. Five
-        // separate action buttons plus the account chip overflowed this bar
-        // at ordinary window widths, and each new screen made it worse.
+        // Navigation lives in the drawer now, so this bar carries only what
+        // belongs to this screen. It had overflowed twice as screens were
+        // added, and a hamburger scales where a row of buttons does not.
         actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Go to',
-            position: PopupMenuPosition.under,
-            icon: const Icon(Icons.apps_outlined),
-            onSelected: (value) {
-              final screen = switch (value) {
-                'dashboard' => const DashboardScreen(),
-                'reports' => const ReportsScreen(),
-                'customers' => const CustomerListScreen(),
-                'purchases' => const PurchaseListScreen(),
-                'suppliers' => const SupplierListScreen(),
-                'expenses' => const ExpensesScreen(),
-                _ => const DashboardScreen(),
-              };
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: 'dashboard',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.dashboard_outlined),
-                  title: Text('Dashboard'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'reports',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.bar_chart_outlined),
-                  title: Text('Reports'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'customers',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.people_outline),
-                  title: Text('Customers'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'purchases',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.local_shipping_outlined),
-                  title: Text('Purchases'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'suppliers',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.store_outlined),
-                  title: Text('Suppliers'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'expenses',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.receipt_long_outlined),
-                  title: Text('Expenses'),
-                ),
-              ),
-            ],
-          ),
-          const AccountMenu(),
-          // Icon-only on purpose: this bar has repeatedly overflowed at
-          // ordinary window widths, and "New sale" is the one action that
-          // earns a label here.
           if (canManageProducts)
             IconButton(
               onPressed: () => Navigator.of(context).push(
@@ -152,7 +76,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
           ),
         ],
       ),
-      body: Padding(
+      drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'products'),
+      body: NavRail(destination: 'products', child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,7 +100,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

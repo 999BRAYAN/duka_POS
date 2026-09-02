@@ -25,6 +25,11 @@ class Sales extends Table {
   RealColumn get grossProfit => real().withDefault(const Constant(0))();
   // completed, void, refunded
   TextColumn get status => text().withDefault(const Constant('completed'))();
+  // Why this sale was voided, and who did it. Required by SaleService.voidSale
+  // — a void moves both stock and money, so the reason is the only record of
+  // what actually happened at the counter.
+  TextColumn get voidReason => text().nullable()();
+  IntColumn get voidedByUserId => integer().nullable().references(Users, #id)();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }

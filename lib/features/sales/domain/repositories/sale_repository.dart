@@ -63,7 +63,11 @@ abstract interface class SaleRepository {
     bool overrideCreditLimit,
   });
 
-  Future<void> voidSale(String uuid);
+  /// Reverses a completed sale: the goods return to stock and any unpaid
+  /// balance comes off the customer, in one transaction. [reason] and
+  /// [voidedByUserId] are recorded on the sale — a void moves both stock
+  /// and money, so who did it and why is the only record of what happened.
+  Future<void> voidSale(String uuid, {String? reason, int? voidedByUserId});
 
   Future<Sale?> getSaleByUuid(String uuid);
 

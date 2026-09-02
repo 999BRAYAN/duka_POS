@@ -51,6 +51,15 @@ class CustomerRequiredForCreditException implements Exception {
   String toString() => "A customer is required for payment method 'credit'.";
 }
 
+/// Thrown by [SaleService.voidSale] when no reason was given. The reason is
+/// the only record of why goods and money moved backwards.
+class MissingVoidReasonException implements Exception {
+  const MissingVoidReasonException();
+
+  @override
+  String toString() => 'Say why this sale is being voided.';
+}
+
 /// Thrown by [SaleRepository.voidSale] when the sale is already void.
 /// Voiding is not idempotent — it returns stock and credits the customer's
 /// balance — so a second void would return the goods twice.

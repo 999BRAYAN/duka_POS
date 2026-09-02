@@ -1,12 +1,13 @@
 import 'package:duka_pos/core/authorization/authorization_exceptions.dart';
 import 'package:duka_pos/core/authorization/current_user_provider.dart';
 import 'package:duka_pos/core/authorization/permission.dart';
-import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/authorization/providers.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/expenses/data/providers.dart';
 import 'package:duka_pos/features/expenses/presentation/providers.dart';
+import 'package:duka_pos/core/navigation/app_drawer.dart';
+import 'package:duka_pos/core/navigation/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,8 +103,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         .can(Permission.manageExpenses);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Expenses'), actions: const [AccountMenu()]),
-      body: Padding(
+      appBar: AppBar(title: const Text('Expenses')),
+      drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'expenses'),
+      body: NavRail(destination: 'expenses', child: Padding(
         padding: const EdgeInsets.all(24),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -136,7 +138,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           },
         ),
       ),
-    );
+    ));
   }
 
   Widget _form(BuildContext context) {

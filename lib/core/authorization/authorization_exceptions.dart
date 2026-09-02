@@ -25,6 +25,7 @@ class UnauthorizedException implements Exception {
     Permission.overrideCreditLimit =>
       "Only a manager can approve a sale beyond a customer's credit limit.",
     Permission.manageExpenses => 'Only a manager can record shop expenses.',
+    Permission.voidSale => 'Only a manager can void a completed sale.',
     Permission.manageStaff => 'Only a manager can manage staff logins.',
   };
 }

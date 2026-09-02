@@ -18,11 +18,11 @@ class CartLine {
 
   double get lineTotal => price * quantity;
 
-  CartLine copyWith({double? quantity}) {
+  CartLine copyWith({double? quantity, double? price}) {
     return CartLine(
       productId: productId,
       name: name,
-      price: price,
+      price: price ?? this.price,
       quantity: quantity ?? this.quantity,
     );
   }

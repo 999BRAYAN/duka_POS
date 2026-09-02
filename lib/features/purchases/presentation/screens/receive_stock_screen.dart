@@ -32,8 +32,9 @@ class _LineItemForm {
 
 /// Records stock received from a supplier: supplier picker, repeatable line
 /// items (product, qty, unit cost — auto-computing each line's total and a
-/// running order total), payment status, submit. Product picker is a plain
-/// dropdown for now — search comes once the happy path is proven out.
+/// running order total), payment status, submit. The product picker is a
+/// type-ahead: a hardware catalog runs to hundreds of near-identical
+/// fittings, and typing "elb 1" beats scrolling for it.
 class ReceiveStockScreen extends ConsumerStatefulWidget {
   const ReceiveStockScreen({super.key});
 
@@ -280,16 +281,11 @@ class _LineItemRow extends StatelessWidget {
       children: [
         Expanded(
           flex: 4,
-          child: DropdownButtonFormField<int>(
-            initialValue: line.productId,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Product', isDense: true),
-            items: [
-              for (final product in products)
-                DropdownMenuItem(value: product.id, child: Text(product.name)),
-            ],
-            onChanged: (value) {
-              line.productId = value;
+          child: _ProductLookupField(
+            products: products,
+            selectedId: line.productId,
+            onSelected: (product) {
+              line.productId = product.id;
               onChanged();
             },
           ),
@@ -380,6 +376,107 @@ class _PaymentStatusField extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Finds a product by typing rather than scrolling a dropdown.
+///
+/// A hardware shop's catalog runs to hundreds of lines — elbows and sockets
+/// in a dozen sizes each — and picking "Elbow 90° 1in PVC" out of a long
+/// list is slower and more error-prone than typing "elb 1". Matches on name,
+/// SKU and barcode, since the code on the box is often what's to hand.
+class _ProductLookupField extends StatefulWidget {
+  const _ProductLookupField({
+    required this.products,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  final List<Product> products;
+  final int? selectedId;
+  final ValueChanged<Product> onSelected;
+
+  @override
+  State<_ProductLookupField> createState() => _ProductLookupFieldState();
+}
+
+class _ProductLookupFieldState extends State<_ProductLookupField> {
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.products
+        .where((p) => p.id == widget.selectedId)
+        .firstOrNull;
+
+    return Autocomplete<Product>(
+      // Rebuild the field's text when the line is reset or restored.
+      key: ValueKey(widget.selectedId),
+      initialValue: TextEditingValue(text: selected?.name ?? ''),
+      displayStringForOption: (product) => product.name,
+      optionsBuilder: (value) {
+        final query = value.text.trim().toLowerCase();
+        if (query.isEmpty) return widget.products.take(12);
+        return widget.products.where((product) {
+          final haystack = [
+            product.name,
+            product.sku ?? '',
+            product.barcode ?? '',
+          ].join(' ').toLowerCase();
+          return haystack.contains(query);
+        }).take(12);
+      },
+      onSelected: widget.onSelected,
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            labelText: 'Product',
+            isDense: true,
+            hintText: 'Type a name or SKU',
+            suffixIcon: controller.text.isEmpty
+                ? const Icon(Icons.search, size: 18)
+                : IconButton(
+                    icon: const Icon(Icons.clear, size: 16),
+                    tooltip: 'Clear',
+                    onPressed: () {
+                      controller.clear();
+                      focusNode.requestFocus();
+                    },
+                  ),
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 260, maxWidth: 360),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final product = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(product.name),
+                    subtitle: Text(
+                      '${product.sku ?? 'no SKU'} · '
+                      '${product.stock.toStringAsFixed(0)} ${product.unit} on hand',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    onTap: () => onSelected(product),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

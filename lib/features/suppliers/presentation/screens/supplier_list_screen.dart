@@ -1,10 +1,11 @@
 import 'package:duka_pos/core/authorization/permission.dart';
-import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/authorization/providers.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/suppliers/presentation/providers.dart';
 import 'package:duka_pos/features/suppliers/presentation/screens/supplier_form_screen.dart';
+import 'package:duka_pos/core/navigation/app_drawer.dart';
+import 'package:duka_pos/core/navigation/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +28,6 @@ class SupplierListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Suppliers'),
         actions: [
-          const AccountMenu(),
           if (canManage)
             Padding(
               padding: const EdgeInsets.only(right: 12),
@@ -41,7 +41,8 @@ class SupplierListScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: suppliersAsync.when(
+      drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'suppliers'),
+      body: NavRail(destination: 'suppliers', child: suppliersAsync.when(
         data: (suppliers) => suppliers.isEmpty
             ? const Center(
                 child: Text('No suppliers yet. Add the shops you buy stock from.'),
@@ -50,7 +51,7 @@ class SupplierListScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Could not load suppliers: $error')),
       ),
-    );
+    ));
   }
 
   Widget _table(BuildContext context, List<Supplier> suppliers, bool canManage) {

@@ -1,6 +1,7 @@
 import 'package:duka_pos/core/authorization/authorization_service.dart';
 import 'package:duka_pos/core/authorization/permission.dart';
 import 'package:duka_pos/core/database/database.dart';
+import 'package:duka_pos/features/sales/domain/exceptions.dart';
 import 'package:duka_pos/features/sales/domain/models/cart_line.dart';
 import 'package:duka_pos/features/sales/domain/repositories/sale_repository.dart';
 
@@ -40,6 +41,24 @@ class SaleService {
       amountPaid: amountPaid,
       discount: discount,
       overrideCreditLimit: overrideCreditLimit,
+    );
+  }
+
+  /// Voids a completed sale. Requires [Permission.voidSale] and a non-blank
+  /// [reason] — a cashier who could void their own sales could take cash out
+  /// of the till and erase the record of it, and a void with no reason
+  /// leaves nothing to reconcile against.
+  Future<void> voidSale({
+    required String uuid,
+    required String reason,
+    int? voidedByUserId,
+  }) {
+    _authorizationService.require(Permission.voidSale);
+    if (reason.trim().isEmpty) throw const MissingVoidReasonException();
+    return _repository.voidSale(
+      uuid,
+      reason: reason.trim(),
+      voidedByUserId: voidedByUserId,
     );
   }
 }

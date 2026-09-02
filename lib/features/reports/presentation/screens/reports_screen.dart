@@ -1,4 +1,3 @@
-import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/core/utilities/date_range.dart';
 import 'package:duka_pos/features/inventory/domain/models/product_stock_valuation.dart';
@@ -6,6 +5,8 @@ import 'package:duka_pos/features/reports/domain/models/inventory_report.dart';
 import 'package:duka_pos/features/reports/domain/models/sales_report.dart';
 import 'package:duka_pos/features/reports/presentation/providers/report_providers.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:duka_pos/core/navigation/app_drawer.dart';
+import 'package:duka_pos/core/navigation/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -40,12 +41,12 @@ class ReportsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Reports'),
-          actions: const [AccountMenu()],
           bottom: const TabBar(
             tabs: [Tab(text: 'Sales'), Tab(text: 'Profit & loss'), Tab(text: 'Inventory')],
           ),
         ),
-        body: Column(
+        drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'reports'),
+        body: NavRail(destination: 'reports', child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: const [
             Padding(padding: EdgeInsets.all(24), child: _PeriodSelector()),
@@ -57,7 +58,7 @@ class ReportsScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

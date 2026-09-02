@@ -1,10 +1,11 @@
-import 'package:duka_pos/core/authorization/presentation/account_menu.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/credit/presentation/screens/receive_payment_screen.dart';
 import 'package:duka_pos/features/customers/presentation/providers.dart';
 import 'package:duka_pos/features/customers/presentation/screens/customer_form_screen.dart';
 import 'package:duka_pos/features/customers/presentation/screens/customer_statement_screen.dart';
+import 'package:duka_pos/core/navigation/app_drawer.dart';
+import 'package:duka_pos/core/navigation/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -43,7 +44,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
       appBar: AppBar(
         title: const Text('Customers'),
         actions: [
-          const AccountMenu(),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton.icon(
@@ -56,7 +56,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
           ),
         ],
       ),
-      body: Padding(
+      drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'customers'),
+      body: NavRail(destination: 'customers', child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -85,7 +86,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

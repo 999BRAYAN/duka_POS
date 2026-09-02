@@ -89,7 +89,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Add customer'));
     await tester.pumpAndSettle();
 
-    expect(find.text("You don't have permission to add a customer."), findsOneWidget);
+    expect(find.textContaining("Only a manager"), findsOneWidget);
     expect(await db.select(db.customers).get(), isEmpty);
 
     await tester.pumpWidget(const SizedBox.shrink());
