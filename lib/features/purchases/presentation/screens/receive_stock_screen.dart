@@ -11,6 +11,12 @@ import 'package:intl/intl.dart';
 
 final _amountFormat = NumberFormat('#,##0.00');
 
+/// Plain decimal text for prefilling a numeric field a cashier can still
+/// edit — no trailing ".00" on a whole number. Same convention
+/// product_form_screen.dart's `_plain` uses for the same reason.
+String _plain(double value) =>
+    value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toString();
+
 class _LineItemForm {
   _LineItemForm() : id = _nextId++;
 
@@ -286,6 +292,12 @@ class _LineItemRow extends StatelessWidget {
             selectedId: line.productId,
             onSelected: (product) {
               line.productId = product.id;
+              // A starting point, not a lock-in: this purchase's actual
+              // unit cost can differ from the product's last-known one
+              // (supplier price changes, a different supplier), so the
+              // field stays editable — it's just no longer blank by
+              // default.
+              line.unitCostController.text = _plain(product.costPrice);
               onChanged();
             },
           ),

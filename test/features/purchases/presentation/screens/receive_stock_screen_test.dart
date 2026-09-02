@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:duka_pos/core/authorization/current_user_provider.dart';
 import 'package:duka_pos/core/database/database.dart';
@@ -19,7 +20,12 @@ void main() {
       SuppliersCompanion.insert(uuid: 'sup-1', name: 'Acme Traders', createdAt: DateTime.now()),
     );
     productId = (await db.into(db.products).insertReturning(
-      ProductsCompanion.insert(uuid: 'prod-1', name: 'Soda', createdAt: DateTime.now()),
+      ProductsCompanion.insert(
+        uuid: 'prod-1',
+        name: 'Soda',
+        costPrice: const Value(25),
+        createdAt: DateTime.now(),
+      ),
     )).id;
     manager = await db.into(db.users).insertReturning(
       UsersCompanion.insert(
@@ -98,6 +104,30 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
   });
+
+  testWidgets(
+    'picking a product fills unit cost from its current cost price, and it stays editable',
+    (tester) async {
+      await pumpScreen(tester);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Product'), 'sod');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Soda').last);
+      await tester.pumpAndSettle();
+
+      final unitCostField = find.widgetWithText(TextField, 'Unit cost');
+      expect(tester.widget<TextField>(unitCostField).controller!.text, '25');
+
+      // A starting point, not a lock-in: this purchase's actual price can
+      // differ from the product's last-known cost.
+      await tester.enterText(unitCostField, '32');
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(unitCostField).controller!.text, '32');
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(Duration.zero);
+    },
+  );
 
   testWidgets('shows an error and saves nothing when no supplier is selected', (tester) async {
     await pumpScreen(tester);
