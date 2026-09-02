@@ -58,6 +58,8 @@ class _FirstRunSetupScreenState extends ConsumerState<FirstRunSetupScreen> {
         fullName: _fullName.text,
       );
       if (!mounted) return;
+      // See sign_in_screen.dart's _submit for why this unfocus matters.
+      FocusManager.instance.primaryFocus?.unfocus();
       ref.invalidate(isSetUpProvider);
       ref.read(currentUserProvider.notifier).state = user;
     } on WeakPasswordException catch (e) {

@@ -57,6 +57,8 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
       await ref
           .read(authServiceProvider)
           .changePassword(user: widget.user, newPassword: _password.text);
+      // See product_form_screen.dart's _submit for why this unfocus matters.
+      FocusManager.instance.primaryFocus?.unfocus();
       if (mounted) Navigator.of(context).pop();
     } on WeakPasswordException catch (e) {
       if (mounted) setState(() => _error = 'Password too short. $e');

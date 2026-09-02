@@ -52,6 +52,8 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
         fullName: _fullName.text,
         role: _role,
       );
+      // See product_form_screen.dart's _submit for why this unfocus matters.
+      FocusManager.instance.primaryFocus?.unfocus();
       if (mounted) Navigator.of(context).pop();
     } on UnauthorizedException catch (e) {
       if (mounted) setState(() => _error = '$e');

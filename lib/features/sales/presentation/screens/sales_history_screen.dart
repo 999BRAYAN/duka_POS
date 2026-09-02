@@ -198,6 +198,9 @@ class _VoidDialogState extends State<_VoidDialog> {
       setState(() => _error = 'Say why this sale is being voided.');
       return;
     }
+    // See product_form_screen.dart's _submit for why this unfocus matters —
+    // this field still holds focus when the button is clicked with a mouse.
+    FocusManager.instance.primaryFocus?.unfocus();
     Navigator.of(context).pop(_reason.text.trim());
   }
 

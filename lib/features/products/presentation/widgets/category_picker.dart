@@ -66,7 +66,10 @@ class CategoryPicker extends ConsumerWidget {
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
           decoration: const InputDecoration(labelText: 'Name'),
-          onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+          onSubmitted: (value) {
+            FocusManager.instance.primaryFocus?.unfocus();
+            Navigator.of(context).pop(value.trim());
+          },
         ),
         actions: [
           TextButton(
@@ -74,7 +77,13 @@ class CategoryPicker extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            onPressed: () {
+              // See product_form_screen.dart's _submit for why this unfocus
+              // matters — this field still holds focus when the button is
+              // clicked with a mouse.
+              FocusManager.instance.primaryFocus?.unfocus();
+              Navigator.of(context).pop(controller.text.trim());
+            },
             child: const Text('Create'),
           ),
         ],

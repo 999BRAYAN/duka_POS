@@ -173,6 +173,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         if (mounted) setState(() => _submitting = false);
         return;
       }
+      // Unfocus before popping: on web, a route can be torn down while a
+      // TextField still holds focus (a mouse click on the submit button
+      // doesn't always release it first), and disposing a still-focused
+      // field's Element mid-transition trips a Flutter framework assertion
+      // (InheritedElement._dependents not empty). Releasing focus first
+      // lets that Element deactivate cleanly before the tree comes down.
+      FocusManager.instance.primaryFocus?.unfocus();
       if (mounted) Navigator.of(context).pop();
     } on UnauthorizedException catch (e) {
       if (mounted) setState(() => _error = '$e');

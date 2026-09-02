@@ -40,6 +40,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         password: _password.text,
       );
       if (!mounted) return;
+      // Unfocus before the swap below: setting currentUserProvider replaces
+      // this whole screen with the app's main tree in one rebuild, and
+      // tearing down a still-focused TextField's Element that way trips a
+      // Flutter framework assertion (InheritedElement._dependents not
+      // empty) — see product_form_screen.dart's _submit for the full story.
+      FocusManager.instance.primaryFocus?.unfocus();
       // Setting this is what dismisses the gate and shows the app.
       ref.read(currentUserProvider.notifier).state = user;
     } on InvalidCredentialsException catch (e) {
