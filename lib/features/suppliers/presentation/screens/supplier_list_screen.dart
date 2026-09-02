@@ -73,7 +73,7 @@ class SupplierListScreen extends ConsumerWidget {
             for (final supplier in suppliers)
               DataRow(
                 color: supplier.balance > 0
-                    ? WidgetStatePropertyAll(AppColors.rust50)
+                    ? WidgetStatePropertyAll(SemanticColors.debtSurface(context))
                     : null,
                 cells: [
                   DataCell(Text(supplier.name)),
@@ -85,7 +85,9 @@ class SupplierListScreen extends ConsumerWidget {
                         fontWeight: supplier.balance > 0
                             ? FontWeight.w700
                             : FontWeight.normal,
-                        color: supplier.balance > 0 ? AppColors.rust700 : null,
+                        color: supplier.balance > 0
+                            ? SemanticColors.debt(context)
+                            : null,
                       ),
                     ),
                   ),

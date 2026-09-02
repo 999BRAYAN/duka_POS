@@ -205,7 +205,7 @@ class _ProductTable extends StatelessWidget {
 
     return DataRow(
       color: isLowStock
-          ? WidgetStatePropertyAll(AppColors.amber50)
+          ? WidgetStatePropertyAll(SemanticColors.warningSurface(context))
           : null,
       cells: [
         DataCell(Text(product.name)),
@@ -218,7 +218,11 @@ class _ProductTable extends StatelessWidget {
               Text(_priceFormat.format(product.stock)),
               if (isLowStock) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.amber800),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 16,
+                  color: SemanticColors.warning(context),
+                ),
               ],
             ],
           ),

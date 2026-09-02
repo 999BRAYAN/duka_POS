@@ -126,7 +126,9 @@ class _CustomerTable extends StatelessWidget {
     final hasBalance = customer.currentBalance > 0;
 
     return DataRow(
-      color: hasBalance ? const WidgetStatePropertyAll(AppColors.rust50) : null,
+      color: hasBalance
+          ? WidgetStatePropertyAll(SemanticColors.debtSurface(context))
+          : null,
       cells: [
         DataCell(
           Row(
@@ -156,7 +158,7 @@ class _CustomerTable extends StatelessWidget {
           Text(
             _amountFormat.format(customer.currentBalance),
             style: hasBalance
-                ? const TextStyle(color: AppColors.rust700, fontWeight: FontWeight.w600)
+                ? TextStyle(color: SemanticColors.debt(context), fontWeight: FontWeight.w600)
                 : null,
           ),
         ),

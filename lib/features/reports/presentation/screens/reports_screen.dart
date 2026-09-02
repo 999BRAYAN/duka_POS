@@ -370,7 +370,7 @@ class _StockLevelsTable extends StatelessWidget {
               for (final level in levels)
                 DataRow(
                   color: level.isLowStock
-                      ? const WidgetStatePropertyAll(AppColors.amber50)
+                      ? WidgetStatePropertyAll(SemanticColors.warningSurface(context))
                       : null,
                   cells: [
                     DataCell(Text(level.name)),
