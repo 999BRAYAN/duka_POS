@@ -3,6 +3,9 @@ import 'package:duka_pos/core/utilities/date_range.dart';
 import 'package:duka_pos/features/inventory/domain/models/product_stock_valuation.dart';
 import 'package:duka_pos/features/reports/domain/models/inventory_report.dart';
 import 'package:duka_pos/features/reports/domain/models/sales_report.dart';
+import 'package:duka_pos/features/reports/export/inventory_report_export.dart';
+import 'package:duka_pos/features/reports/export/profit_and_loss_report_export.dart';
+import 'package:duka_pos/features/reports/export/sales_report_export.dart';
 import 'package:duka_pos/features/reports/presentation/providers/report_providers.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:duka_pos/core/navigation/app_drawer.dart';
@@ -83,6 +86,38 @@ class _PeriodSelector extends ConsumerWidget {
   }
 }
 
+/// Download actions for whichever report tab this sits in — each tab
+/// builds its own PDF/CSV from the exact report object it already has in
+/// scope, so this never needs to know which tab it's on.
+class _ExportRow extends StatelessWidget {
+  const _ExportRow({required this.onPdf, required this.onCsv});
+
+  final VoidCallback onPdf;
+  final VoidCallback onCsv;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        spacing: 8,
+        children: [
+          OutlinedButton.icon(
+            onPressed: onPdf,
+            icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+            label: const Text('PDF'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onCsv,
+            icon: const Icon(Icons.table_chart_outlined, size: 18),
+            label: const Text('CSV (Excel)'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _StatTile extends StatelessWidget {
   const _StatTile({required this.label, required this.value});
 
@@ -121,6 +156,7 @@ class _SalesReportTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportAsync = ref.watch(salesReportProvider);
+    final range = ref.watch(selectedDateRangeProvider);
 
     return reportAsync.when(
       data: (report) => Padding(
@@ -128,6 +164,11 @@ class _SalesReportTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _ExportRow(
+              onPdf: () => downloadSalesReportPdf(report, range),
+              onCsv: () => downloadSalesReportCsv(report, range),
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 _StatTile(label: 'Total revenue', value: _numberFormat.format(report.totalRevenue)),
@@ -208,40 +249,67 @@ class _ProfitAndLossReportTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportAsync = ref.watch(profitAndLossReportProvider);
+    final range = ref.watch(selectedDateRangeProvider);
 
     return reportAsync.when(
       data: (report) => Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PnlRow(label: 'Subtotal', value: report.subtotal),
-                    _PnlRow(label: 'Discount', value: -report.discount),
-                    const Divider(height: 24),
-                    _PnlRow(label: 'Net revenue', value: report.netRevenue, emphasize: true),
-                    _PnlRow(label: 'Cost of goods sold', value: -report.cogs),
-                    const Divider(height: 24),
-                    _PnlRow(label: 'Gross profit', value: report.grossProfit, emphasize: true),
-                    _PnlRow(label: 'Expenses', value: -report.expenses),
-                    const Divider(height: 24),
-                    _PnlRow(
-                      label: 'Net profit',
-                      value: report.netProfit,
-                      emphasize: true,
-                      color: report.netProfit < 0 ? AppColors.rust700 : AppColors.green700,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ExportRow(
+              onPdf: () => downloadProfitAndLossReportPdf(report, range),
+              onCsv: () => downloadProfitAndLossReportCsv(report, range),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              // A scroll view, not a bare Center: on a short window the
+              // export row above already ate into this tab's height
+              // budget, and the statement below must not overflow just
+              // because it no longer gets the whole tab to itself.
+              child: SingleChildScrollView(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _PnlRow(label: 'Subtotal', value: report.subtotal),
+                            _PnlRow(label: 'Discount', value: -report.discount),
+                            const Divider(height: 24),
+                            _PnlRow(
+                              label: 'Net revenue',
+                              value: report.netRevenue,
+                              emphasize: true,
+                            ),
+                            _PnlRow(label: 'Cost of goods sold', value: -report.cogs),
+                            const Divider(height: 24),
+                            _PnlRow(
+                              label: 'Gross profit',
+                              value: report.grossProfit,
+                              emphasize: true,
+                            ),
+                            _PnlRow(label: 'Expenses', value: -report.expenses),
+                            const Divider(height: 24),
+                            _PnlRow(
+                              label: 'Net profit',
+                              value: report.netProfit,
+                              emphasize: true,
+                              color: report.netProfit < 0 ? AppColors.rust700 : AppColors.green700,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -285,50 +353,63 @@ class _InventoryReportTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportAsync = ref.watch(inventoryReportProvider);
+    final range = ref.watch(selectedDateRangeProvider);
 
     return reportAsync.when(
       data: (report) => Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Stock levels', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: report.stockLevels.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No products yet.',
-                              style: TextStyle(color: AppColors.stone500),
-                            ),
-                          )
-                        : _StockLevelsTable(levels: report.stockLevels),
-                  ),
-                ],
-              ),
+            _ExportRow(
+              onPdf: () => downloadInventoryReportPdf(report, range),
+              onCsv: () => downloadInventoryReportCsv(report, range),
             ),
-            const SizedBox(width: 24),
+            const SizedBox(height: 12),
             Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Stock movement', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
                   Expanded(
-                    child: report.movementSummary.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No stock movement in this period.',
-                              style: TextStyle(color: AppColors.stone500),
-                            ),
-                          )
-                        : _MovementSummaryChart(summary: report.movementSummary),
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('Stock levels', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: report.stockLevels.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    'No products yet.',
+                                    style: TextStyle(color: AppColors.stone500),
+                                  ),
+                                )
+                              : _StockLevelsTable(levels: report.stockLevels),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('Stock movement', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: report.movementSummary.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    'No stock movement in this period.',
+                                    style: TextStyle(color: AppColors.stone500),
+                                  ),
+                                )
+                              : _MovementSummaryChart(summary: report.movementSummary),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -1,4 +1,3 @@
-import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:drift/wasm.dart';
@@ -7,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:web/web.dart' as web;
 
 import '../database/connection/connection_web.dart' as connection;
+import '../web/browser_download.dart';
 import 'sqlite_file_header.dart';
 
 final _fileStampFormat = DateFormat('yyyy-MM-dd_HHmmss');
@@ -52,34 +52,13 @@ Future<Uint8List> exportDatabaseBytes() async {
   return bytes;
 }
 
-/// Saves [bytes] as a browser download named [filename] — the standard
-/// "Blob + hidden anchor click" pattern, since there's no other way to hand
-/// a Flutter-web app's in-memory bytes to the user as a file.
-void triggerBrowserDownload(Uint8List bytes, String filename) {
-  final blob = web.Blob(
-    [bytes.toJS].toJS,
-    web.BlobPropertyBag(type: 'application/x-sqlite3'),
-  );
-  final url = web.URL.createObjectURL(blob);
-
-  final anchor = web.HTMLAnchorElement()
-    ..href = url
-    ..download = filename
-    ..style.display = 'none';
-
-  web.document.body!.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  web.URL.revokeObjectURL(url);
-}
-
 /// Exports the live database and immediately downloads it as
 /// `duka_pos_backup_<timestamp>.db` — the single entry point the "Backup
 /// now" button calls.
 Future<void> downloadDatabaseBackup() async {
   final bytes = await exportDatabaseBytes();
   final filename = 'duka_pos_backup_${_fileStampFormat.format(DateTime.now())}.db';
-  triggerBrowserDownload(bytes, filename);
+  triggerBrowserDownload(bytes, filename, mimeType: 'application/x-sqlite3');
   _recordBackupTaken();
 }
 

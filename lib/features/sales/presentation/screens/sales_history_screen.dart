@@ -9,6 +9,7 @@ import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/features/customers/presentation/providers.dart';
 import 'package:duka_pos/features/sales/data/providers.dart';
 import 'package:duka_pos/features/sales/domain/exceptions.dart';
+import 'package:duka_pos/features/sales/export/sales_history_export.dart';
 import 'package:duka_pos/features/sales/presentation/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,12 +28,32 @@ class SalesHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final salesAsync = ref.watch(salesStreamProvider);
+    final sales = salesAsync.valueOrNull;
     final customers = ref.watch(customersStreamProvider).valueOrNull ?? const <Customer>[];
     final customerById = {for (final c in customers) c.id: c};
     final canVoid = ref.watch(authorizationServiceProvider).can(Permission.voidSale);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sales history')),
+      appBar: AppBar(
+        title: const Text('Sales history'),
+        actions: [
+          IconButton(
+            onPressed: sales == null || sales.isEmpty
+                ? null
+                : () => downloadSalesHistoryPdf(sales, customerById),
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Download as PDF',
+          ),
+          IconButton(
+            onPressed: sales == null || sales.isEmpty
+                ? null
+                : () => downloadSalesHistoryCsv(sales, customerById),
+            icon: const Icon(Icons.table_chart_outlined),
+            tooltip: 'Download as CSV (Excel)',
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       drawer: NavRail.isPersistent(context) ? null : const AppDrawer(current: 'sales'),
       body: NavRail(destination: 'sales', child: salesAsync.when(
         data: (sales) => sales.isEmpty

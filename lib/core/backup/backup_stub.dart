@@ -7,9 +7,6 @@ const _unsupported = 'Database backup is only supported on web.';
 
 Future<Uint8List> exportDatabaseBytes() => throw UnsupportedError(_unsupported);
 
-void triggerBrowserDownload(Uint8List bytes, String filename) =>
-    throw UnsupportedError(_unsupported);
-
 Future<void> downloadDatabaseBackup() => throw UnsupportedError(_unsupported);
 
 enum RestoreOutcome { cancelled, restored }
