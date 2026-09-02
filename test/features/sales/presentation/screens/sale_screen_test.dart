@@ -115,9 +115,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Taps "Complete sale" and, if it succeeds, dismisses the confirmation
+  /// dialog that replaced the old print-receipt snackbar — a validation
+  /// failure shows no dialog, so this is a no-op in that case.
   Future<void> completeSale(WidgetTester tester) async {
     await tester.tap(find.textContaining('Complete sale'));
     await tester.pumpAndSettle();
+
+    final doneButton = find.widgetWithText(FilledButton, 'Done');
+    if (doneButton.evaluate().isNotEmpty) {
+      await tester.tap(doneButton);
+      await tester.pumpAndSettle();
+    }
   }
 
   Future<void> chooseCustomer(WidgetTester tester, String name) async {
@@ -154,6 +163,32 @@ void main() {
 
     await disposeScreen(tester);
   });
+
+  testWidgets(
+    'completing a sale shows a confirmation dialog with a print button, not a snackbar',
+    (tester) async {
+      await pumpScreen(tester);
+      await reviewOrder(tester);
+
+      await tester.tap(find.textContaining('Complete sale'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sale complete'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Print receipt'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+
+      // Still on the confirmation dialog, not back on the order screen yet —
+      // only "Done" dismisses it.
+      expect(find.text('Confirm & pay'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Done'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tap a product to start the order.'), findsOneWidget);
+
+      await disposeScreen(tester);
+    },
+  );
 
   testWidgets('searching narrows the products to what was typed', (tester) async {
     await pumpScreen(tester);

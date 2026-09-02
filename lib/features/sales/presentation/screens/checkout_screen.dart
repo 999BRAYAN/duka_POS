@@ -11,6 +11,7 @@ import 'package:duka_pos/features/sales/data/providers.dart';
 import 'package:duka_pos/features/sales/domain/exceptions.dart';
 import 'package:duka_pos/features/sales/presentation/providers/cart_provider.dart';
 import 'package:duka_pos/features/sales/presentation/providers/order_form_providers.dart';
+import 'package:duka_pos/features/sales/presentation/widgets/sale_confirmation_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -90,22 +91,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ref.read(cartProvider.notifier).clear();
       resetOrder(ref);
 
-      final messenger = ScaffoldMessenger.of(context);
-      Navigator.of(context).pop();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Sale ${sale.invoiceNumber} completed.'),
-          // A direct click is a fresh user gesture, unlike calling
-          // Printing.layoutPdf straight after an awaited save — some
-          // browsers refuse a print dialog that isn't a synchronous
-          // continuation of a click.
-          action: SnackBarAction(
-            label: 'Print receipt',
-            onPressed: () => _printReceipt(sale),
-          ),
-          duration: const Duration(seconds: 6),
-        ),
+      await showSaleConfirmationDialog(
+        context,
+        invoiceNumber: sale.invoiceNumber,
+        total: _amountFormat.format(sale.total),
+        onPrintReceipt: () => _printReceipt(sale),
       );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
     } on CreditLimitExceededException catch (e) {
       setState(() {
         _error = '$e';
