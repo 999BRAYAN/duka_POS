@@ -384,4 +384,52 @@ class SaleRepositoryImpl implements SaleRepository {
           ]))
         .watch();
   }
+
+  @override
+  Future<CreditTransaction> recordCustomerPayment({
+    required int customerId,
+    required double amount,
+    required String method,
+    String? notes,
+  }) {
+    return _db.transaction(() async {
+      final transaction = await _credit.recordPayment(
+        customerId: customerId,
+        amount: amount,
+        method: method,
+        notes: notes,
+      );
+
+      // Oldest first — the same chronological order
+      // CustomerLedgerRepository already reads a customer's history in —
+      // so paying "the tab" settles the longest-outstanding sale first,
+      // same as real bookkeeping. Void sales are excluded: their charge was
+      // already reversed by voidSale, so they carry no real debt.
+      final sales = await (_db.select(_db.sales)
+            ..where(
+              (t) =>
+                  t.customerId.equals(customerId) & t.status.equals('completed'),
+            )
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.createdAt),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
+          .get();
+
+      var remaining = amount;
+      for (final sale in sales) {
+        if (remaining <= 0) break;
+        final due = sale.total - sale.amountPaid;
+        if (due <= 0) continue;
+
+        final applied = remaining < due ? remaining : due;
+        await (_db.update(_db.sales)..where((t) => t.id.equals(sale.id))).write(
+          SalesCompanion(amountPaid: Value(sale.amountPaid + applied)),
+        );
+        remaining -= applied;
+      }
+
+      return transaction;
+    });
+  }
 }

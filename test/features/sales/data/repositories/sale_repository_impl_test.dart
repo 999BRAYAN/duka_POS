@@ -774,4 +774,124 @@ void main() {
       },
     );
   });
+
+  group('recordCustomerPayment', () {
+    Future<int> addProduct(String name, {double stock = 50}) async {
+      final product = await db.into(db.products).insertReturning(
+        ProductsCompanion.insert(
+          uuid: 'prod-$name',
+          name: name,
+          stock: Value(stock),
+          createdAt: DateTime.now(),
+        ),
+      );
+      return product.id;
+    }
+
+    Future<int> addCustomer(String name, {double creditLimit = 1000}) async {
+      final customer = await db.into(db.customers).insertReturning(
+        CustomersCompanion.insert(
+          uuid: 'cust-$name',
+          name: name,
+          creditLimit: Value(creditLimit),
+          createdAt: DateTime.now(),
+        ),
+      );
+      return customer.id;
+    }
+
+    test('paying off a credit sale in full makes it read as Paid', () async {
+      final sodaId = await addProduct('Soda');
+      final customerId = await addCustomer('Jane');
+
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 0,
+      );
+      expect(sale.total - sale.amountPaid, 70, reason: 'starts on account');
+
+      await repo.recordCustomerPayment(customerId: customerId, amount: 70, method: 'cash');
+
+      final updated = await repo.getSaleByUuid(sale.uuid);
+      expect(updated!.amountPaid, 70);
+      expect(updated.total - updated.amountPaid, 0, reason: 'now reads as Paid');
+
+      final customer = await (db.select(
+        db.customers,
+      )..where((t) => t.id.equals(customerId))).getSingle();
+      expect(customer.currentBalance, 0);
+    });
+
+    test('a partial payment leaves the sale still on account', () async {
+      final sodaId = await addProduct('Soda');
+      final customerId = await addCustomer('Jane');
+
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 100, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 0,
+      );
+
+      await repo.recordCustomerPayment(customerId: customerId, amount: 40, method: 'cash');
+
+      final updated = await repo.getSaleByUuid(sale.uuid);
+      expect(updated!.amountPaid, 40);
+      expect(updated.total - updated.amountPaid, 60, reason: 'still on account');
+    });
+
+    test('a payment covering more than one sale settles them oldest first', () async {
+      final sodaId = await addProduct('Soda');
+      final customerId = await addCustomer('Jane');
+
+      final first = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 50, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 0,
+      );
+      final second = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 80, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 0,
+      );
+
+      // Enough to fully settle the first sale (50) and partly settle the
+      // second (30 of 80).
+      await repo.recordCustomerPayment(customerId: customerId, amount: 80, method: 'cash');
+
+      final firstAfter = await repo.getSaleByUuid(first.uuid);
+      final secondAfter = await repo.getSaleByUuid(second.uuid);
+      expect(firstAfter!.amountPaid, 50, reason: 'the older sale is settled first');
+      expect(secondAfter!.amountPaid, 30);
+    });
+
+    test('a voided sale is not touched by a later payment', () async {
+      final sodaId = await addProduct('Soda');
+      final customerId = await addCustomer('Jane');
+
+      final sale = await repo.completeSale(
+        cart: [CartLine(productId: sodaId, name: 'Soda', price: 70, quantity: 1)],
+        customerId: customerId,
+        userId: userId,
+        paymentMethod: 'credit',
+        amountPaid: 0,
+      );
+      await repo.voidSale(sale.uuid);
+
+      // The void already zeroed the balance it owed; confirm a later
+      // payment doesn't also try to apply itself to the voided sale.
+      await repo.recordCustomerPayment(customerId: customerId, amount: 20, method: 'cash');
+
+      final voided = await repo.getSaleByUuid(sale.uuid);
+      expect(voided!.amountPaid, 0, reason: 'a voided sale is excluded from allocation');
+    });
+  });
 }

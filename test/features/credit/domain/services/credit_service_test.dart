@@ -4,6 +4,8 @@ import 'package:duka_pos/core/authorization/authorization_service.dart';
 import 'package:duka_pos/core/database/database.dart';
 import 'package:duka_pos/features/credit/data/repositories/credit_repository_impl.dart';
 import 'package:duka_pos/features/credit/domain/services/credit_service.dart';
+import 'package:duka_pos/features/inventory/data/repositories/stock_movement_repository_impl.dart';
+import 'package:duka_pos/features/sales/data/repositories/sale_repository_impl.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 User _userWithRole(String role) {
@@ -38,7 +40,15 @@ void main() {
   tearDown(() => db.close());
 
   CreditService serviceAs(String role) {
-    return CreditService(repository, AuthorizationService(_userWithRole(role)));
+    // CreditService now depends on SaleRepository (see its class doc for
+    // why), which itself needs the other two repositories a completed sale
+    // touches — unused by these tests beyond satisfying the constructor.
+    final saleRepository = SaleRepositoryImpl(
+      db,
+      StockMovementRepositoryImpl(db),
+      repository,
+    );
+    return CreditService(saleRepository, AuthorizationService(_userWithRole(role)));
   }
 
   test('a cashier cannot recordPayment', () {

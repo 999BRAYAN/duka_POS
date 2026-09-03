@@ -76,4 +76,25 @@ abstract interface class SaleRepository {
   Stream<List<Sale>> watchSales();
 
   Stream<List<Sale>> watchSalesForDateRange(DateTime start, DateTime end);
+
+  /// Records a payment against [customerId]'s outstanding balance — same
+  /// effect as CreditRepository.recordPayment (which this calls) — and
+  /// additionally allocates it across that customer's outstanding
+  /// (non-void) sales, oldest first, increasing each affected sale's
+  /// amountPaid until the payment is exhausted or every outstanding sale is
+  /// covered. Sales.amountPaid otherwise has exactly one writer
+  /// ([completeSale]); this is the second, deliberately kept here rather
+  /// than in CreditRepository so that stays true — mirrors
+  /// PurchaseRepository.recordPayment updating its one specific purchase's
+  /// amountPaid, just spread across possibly-many sales since a credit
+  /// payment isn't tied to one sale the way a purchase payment is tied to
+  /// one purchase. This is what makes SalesHistoryScreen's "Paid"/"On
+  /// account" status (a pure read of amountPaid vs total) catch up once a
+  /// credit sale is paid off, instead of staying frozen at "On account".
+  Future<CreditTransaction> recordCustomerPayment({
+    required int customerId,
+    required double amount,
+    required String method,
+    String? notes,
+  });
 }
