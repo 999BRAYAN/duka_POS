@@ -268,6 +268,41 @@ void main() {
     await disposeScreen(tester);
   });
 
+  testWidgets(
+    'choosing Credit after a customer is picked leaves nothing paid and charges the customer',
+    (tester) async {
+      await pumpScreen(tester);
+      await reviewOrder(tester);
+      await chooseCustomer(tester, 'Jane');
+
+      // Defaults to paid in full until Credit is explicitly chosen.
+      final paidField = find.widgetWithText(TextField, 'Amount paid now');
+      expect(tester.widget<TextField>(paidField).controller!.text, '70.00');
+
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Credit').last);
+      await tester.pumpAndSettle();
+
+      // Credit means nothing is taken now, so there is no amount to type —
+      // same as ReceiveStockScreen's "Credit" payment status.
+      expect(find.widgetWithText(TextField, 'Amount paid now'), findsNothing);
+      expect(find.textContaining('Remaining 70.00'), findsOneWidget);
+
+      await completeSale(tester);
+
+      final sale = await db.select(db.sales).getSingle();
+      expect(sale.amountPaid, 0);
+      expect(sale.paymentMethod, 'credit');
+      final customer = await (db.select(
+        db.customers,
+      )..where((t) => t.id.equals(janeDoe.id))).getSingle();
+      expect(customer.currentBalance, 70);
+
+      await disposeScreen(tester);
+    },
+  );
+
   testWidgets('a cashier over the credit limit is refused, with no override offered', (
     tester,
   ) async {

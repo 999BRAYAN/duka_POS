@@ -321,15 +321,22 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 // A newly-picked customer defaults to
                                 // paying in full: leaving a balance should
                                 // be a deliberate act, not what happens by
-                                // forgetting to type anything.
+                                // forgetting to type anything. Except when
+                                // "Credit" is already the payment method —
+                                // then paid-in-full would silently discard
+                                // the credit sale, so it defaults to unpaid
+                                // instead, same as a fresh pick of "Credit"
+                                // below.
                                 final wasWalkIn = customerId == null;
                                 ref
                                         .read(orderCustomerIdProvider.notifier)
                                         .state =
                                     value;
                                 if (value != null && wasWalkIn) {
-                                  _amountPaidController.text = total
-                                      .toStringAsFixed(2);
+                                  _amountPaidController.text =
+                                      paymentMethod == 'credit'
+                                      ? '0'
+                                      : total.toStringAsFixed(2);
                                 }
                                 setState(() => _creditLimitRefused = false);
                               },
@@ -359,15 +366,33 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                   child: Text('Credit'),
                                 ),
                               ],
-                              onChanged: (value) =>
-                                  ref
-                                          .read(
-                                            orderPaymentMethodProvider.notifier,
-                                          )
-                                          .state =
-                                      value ?? 'cash',
+                              onChanged: (value) {
+                                final method = value ?? 'cash';
+                                final wasCredit = paymentMethod == 'credit';
+                                ref
+                                        .read(
+                                          orderPaymentMethodProvider.notifier,
+                                        )
+                                        .state =
+                                    method;
+                                // Credit means nothing is taken now — mirrors
+                                // ReceiveStockScreen's "Credit" payment
+                                // status, which forces amountPaid to 0 rather
+                                // than leaving whatever was last typed (often
+                                // the auto-filled full total) in place.
+                                if (customerId != null) {
+                                  if (method == 'credit') {
+                                    _amountPaidController.text = '0';
+                                  } else if (wasCredit) {
+                                    _amountPaidController.text = total
+                                        .toStringAsFixed(2);
+                                  }
+                                }
+                                setState(() => _creditLimitRefused = false);
+                              },
                             ),
-                            if (customerId != null) ...[
+                            if (customerId != null &&
+                                paymentMethod != 'credit') ...[
                               const SizedBox(height: 12),
                               TextField(
                                 controller: _amountPaidController,
