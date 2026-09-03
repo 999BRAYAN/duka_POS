@@ -1,4 +1,8 @@
-# duka_pos
+# duka_pos — Version 1
+
+This branch (`v1`) is Version 1 of duka_pos. Version 2 development happens on
+the `v2` branch — check with whoever is directing the work if you're unsure
+which branch a given session's changes belong on.
 
 A new Flutter project.
 
