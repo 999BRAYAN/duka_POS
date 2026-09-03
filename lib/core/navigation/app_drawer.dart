@@ -1,6 +1,7 @@
 import 'package:duka_pos/core/authorization/current_user_provider.dart';
 import 'package:duka_pos/core/authorization/permission.dart';
 import 'package:duka_pos/core/authorization/presentation/change_password_dialog.dart';
+import 'package:duka_pos/core/authorization/presentation/switch_user_dialog.dart';
 import 'package:duka_pos/core/authorization/providers.dart';
 import 'package:duka_pos/core/theme/app_theme.dart';
 import 'package:duka_pos/core/theme/theme_mode_provider.dart';
@@ -187,6 +188,16 @@ class AppDrawer extends ConsumerWidget {
                       onTap: () {
                         if (!persistent) Navigator.of(context).pop();
                         showChangePasswordDialog(context, ref, user: user);
+                      },
+                    ),
+                  if (user != null)
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.switch_account_outlined, size: 20),
+                      title: const Text('Switch user'),
+                      onTap: () {
+                        if (!persistent) Navigator.of(context).pop();
+                        showSwitchUserDialog(context, ref);
                       },
                     ),
                   ListTile(

@@ -48,6 +48,19 @@ void main() {
     );
   }
 
+  Future<void> addCashier() async {
+    await db.into(db.users).insert(
+      UsersCompanion.insert(
+        uuid: 'user-cashier',
+        username: 'brian',
+        passwordHash: PasswordHasher.hash('cashier2026'),
+        fullName: 'Brian Otieno',
+        role: 'cashier',
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
   testWidgets('a shop with no accounts opens the first-run setup', (tester) async {
     await pumpApp(tester);
 
@@ -145,6 +158,57 @@ void main() {
 
     expect(find.text('Sign in to open the till'), findsOneWidget);
     expect(find.text('Products'), findsNothing);
+
+    await disposeApp(tester);
+  });
+
+  testWidgets('switching user signs in as someone else without leaving the app', (tester) async {
+    await addManager();
+    await addCashier();
+    final container = ProviderContainer(
+      overrides: [databaseProvider.overrideWithValue(db)],
+    );
+    addTearDown(container.dispose);
+
+    final manager = (await db.select(
+      db.users,
+    ).get()).firstWhere((u) => u.role == 'manager');
+    container.read(currentUserProvider.notifier).state = manager;
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const MyApp()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Products'), findsWidgets);
+
+    // Below NavRail.persistentFrom, the drawer is reached through the
+    // hamburger rather than sitting on the page already.
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Switch user'));
+    await tester.pumpAndSettle();
+
+    // The signed-in manager must not appear as an option to switch to.
+    expect(find.text('Amina Wanjiru'), findsNothing);
+    expect(find.text('Brian Otieno'), findsOneWidget);
+
+    await tester.tap(find.text('Brian Otieno'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'wrong-password');
+    await tester.tap(find.widgetWithText(FilledButton, 'Switch'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("don't match"), findsOneWidget);
+    expect(container.read(currentUserProvider)?.fullName, 'Amina Wanjiru');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'cashier2026');
+    await tester.tap(find.widgetWithText(FilledButton, 'Switch'));
+    await tester.pumpAndSettle();
+
+    expect(container.read(currentUserProvider)?.fullName, 'Brian Otieno');
+    // Still in the app, on the same screen — no sign-out/reload round trip.
+    expect(find.text('Sign in to open the till'), findsNothing);
+    expect(find.text('Products'), findsWidgets);
 
     await disposeApp(tester);
   });
