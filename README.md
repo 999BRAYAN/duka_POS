@@ -1,4 +1,8 @@
-# duka_pos
+# duka_pos — Version 2
+
+This branch (`v2`) is Version 2 of duka_pos, started as a full copy of
+Version 1 (see the `v1` branch). Check with whoever is directing the work if
+you're unsure which branch a given session's changes belong on.
 
 A new Flutter project.
 
