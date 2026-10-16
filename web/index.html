@@ -1,88 +1,31 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="duka_pos">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>duka_pos</title>
-  <link rel="manifest" href="manifest.json">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Duka POS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b45309'/%3E%3Cpath d='M9 11h14l-1.4 9H10.4z' fill='none' stroke='%23fff' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='12.5' cy='23.5' r='1.5' fill='%23fff'/%3E%3Ccircle cx='19.5' cy='23.5' r='1.5' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="preload" href="fonts/roboto-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+  <script>
+    // Pick the theme before first paint so a dark till doesn't flash white.
+    try {
+      var m = localStorage.getItem('duka_pos.theme_mode') || 'system';
+      var dark = m === 'dark' || (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    } catch (e) {}
+  </script>
+  <style>
+    /* Shown instantly, before the scripts have loaded — the same stone/amber as the app. */
+    #splash { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #78716c; font: 500 16px Roboto, system-ui, sans-serif; }
+    #splash .dot { width: 40px; height: 40px; border-radius: 50%; border: 4px solid #d6d3d1; border-top-color: #b45309; animation: s 0.9s linear infinite; }
+    @keyframes s { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-  <!--
-    A plain HTML/CSS splash shown the instant the page loads, before
-    Flutter's engine (main.dart.js + the CanvasKit/skwasm runtime, several
-    MB) has finished downloading. Flutter's first frame replaces the whole
-    body, so this is cleared automatically once the app paints — no script
-    needed to remove it.
-  -->
-  <style>
-    #splash {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      background: #FAFAF9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    #splash .name {
-      font-size: 18px;
-      font-weight: 600;
-      color: #292524;
-      letter-spacing: 0.2px;
-    }
-    #splash .spinner {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: 3px solid #F5F5F4;
-      border-top-color: #B45309;
-      animation: splash-spin 0.8s linear infinite;
-    }
-    @keyframes splash-spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
-  <div id="splash">
-    <div class="spinner"></div>
-    <div class="name">Duka POS</div>
-  </div>
-
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+  <div id="app"><div id="splash"><div class="dot"></div>Duka POS</div></div>
+  <noscript>Duka POS needs JavaScript.</noscript>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
