@@ -520,3 +520,24 @@ def test_import_a_sheet_previews_then_populates(manager_ui, tmp_path):
     expect(ui.page.get_by_text("Import finished")).to_be_visible()
     products = ui.get("/api/products")["products"]
     assert [(p["name"], p["stock"]) for p in products] == [("Gate valve", 12)]
+
+
+# --- assistant / stock health ----------------------------------------------------------------------------------------
+
+def test_assistant_chat_and_stock_health(manager_ui):
+    ui = manager_ui
+    seed(ui)
+    ui.goto("/products")
+    ui.page.locator("button[title='Ask the assistant']").click()
+    ui.page.get_by_placeholder("Ask about stock").fill("how many socket do we have?")
+    ui.page.keyboard.press("Enter")
+    expect(ui.page.locator(".chat-msg.bot").last).to_contain_text("Socket: 3")
+    ui.page.get_by_role("button", name="What's running low?").first.click()
+    expect(ui.page.locator(".chat-table").last).to_contain_text("Socket")
+    ui.shot("assistant")
+    ui.page.keyboard.press("Escape")
+
+    ui.goto("/insights")
+    expect(ui.page.get_by_text("Stock value (at cost)")).to_be_visible()
+    expect(ui.page.get_by_text("No completed sales yet")).to_be_visible()
+    ui.shot("stock_health")

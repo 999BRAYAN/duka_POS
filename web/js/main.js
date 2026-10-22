@@ -7,6 +7,7 @@ import { loadSession, onSessionChange } from './session.js';
 import { applyTheme, state } from './store.js';
 import { setupScreen, signInScreen } from './screens/auth.js';
 import { routes } from './routes.js';
+import { mountAssistant, unmountAssistant } from './assistant.js';
 
 applyTheme();
 const app = document.getElementById('app');
@@ -14,6 +15,7 @@ let routerStarted = false;
 
 function showGate() {
   stop();
+  unmountAssistant();
   const screen = state.isSetUp ? signInScreen() : setupScreen();
   app.replaceChildren(screen.el);
   document.title = 'Duka POS';
@@ -27,6 +29,7 @@ function showApp() {
   // A fresh visit opens on Products, as Version 1 did.
   if (!currentPath() || currentPath() === '/') history.replaceState({ depth: 0 }, '', '#/products');
   start();
+  mountAssistant();
 }
 
 function paint() {

@@ -9,6 +9,7 @@ import { productFormScreen, productListScreen } from './screens/products.js';
 import { purchaseListScreen, receiveStockScreen } from './screens/purchases.js';
 import { reportsScreen } from './screens/reports.js';
 import { importScreen } from './screens/import.js';
+import { insightsScreen } from './screens/insights.js';
 import { checkoutScreen, saleScreen } from './screens/sales.js';
 import { staffFormScreen, staffListScreen } from './screens/staff.js';
 import { supplierFormScreen, supplierListScreen } from './screens/suppliers.js';
@@ -35,5 +36,6 @@ export const routes = [
   ['/expenses', () => expensesScreen()],
   ['/dashboard', () => dashboardScreen()],
   ['/import', () => importScreen()],
+  ['/insights', () => insightsScreen()],
   ['/reports', () => reportsScreen()],
 ];

@@ -31,6 +31,7 @@ const GROUPS = [
     ['expenses', 'Expenses', 'payments', true, 'manageExpenses', '/expenses'],
     ['dashboard', 'Dashboard', 'dashboard', true, 'manageProducts', '/dashboard'],
     ['reports', 'Reports', 'bar_chart', true, 'manageProducts', '/reports'],
+    ['insights', 'Stock health', 'monitor_heart', true, 'manageProducts', '/insights'],
   ]],
 ];
 
