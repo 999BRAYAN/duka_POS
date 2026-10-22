@@ -56,10 +56,38 @@ What necessarily differs because the data now lives on a server:
 To let other tills on the shop network use it, set `DUKA_HOST=0.0.0.0` and open
 `http://<this-pc's-address>:8080` from them.
 
+## The shop assistant (free, offline)
+
+The chat button on every screen answers questions from the shop's own records.
+No account, no internet and no paid service are involved.
+
+**Built in (always on).** It understands plain questions about stock, prices,
+what to reorder, slow movers and best sellers, margins and stock value; sales,
+profit and expenses for any period (today, yesterday, this/last week or month,
+last 30 days, in March) and comparisons between two periods; takings by cash /
+M-Pesa / card; busiest days and hours; any named customer's balance, credit
+limit and statement; suppliers, what you owe them and unpaid purchases; any
+invoice by number; staff; a one-glance summary of the shop; and how to do
+things in the app ("how do I void a sale?"). Permissions follow the screens: a
+cashier gets stock, prices, customer balances and how-to help; money and
+buying questions are for managers.
+
+**Ask anything (optional, still free).** Install [Ollama](https://ollama.com)
+and run `ollama pull qwen2.5:3b` once (about 2 GB). Leave Ollama running and the
+assistant finds it by itself. A manager's question that the built-in answers
+don't recognise is then turned into a database query by the local model, the
+query is checked (a single read-only `SELECT` on the shop's tables, never the
+password column), run on a read-only connection with a time and row limit, and
+the result is explained in plain words. Those answers are marked
+"machine-made" and show the query so they can be double-checked. A small model
+will sometimes get a question wrong; the built-in answers are the dependable
+ones. Settings are in `.env.example`.
+
 ## Layout
 
 ```
 duka/            Python back end
+  assistant/     the shop assistant (built-in answers + optional local model)
   repos/         the business rules (sales, stock, credit, purchases, reports…)
   api/           the JSON routes
   exports.py     receipt, report and CSV output

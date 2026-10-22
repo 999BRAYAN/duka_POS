@@ -1,11 +1,11 @@
 // The shop assistant: a chat button on every screen. Answers come from the
-// shop's own records (see duka/assistant.py), so nothing here needs internet.
+// shop's own records (see duka/assistant/), so nothing here needs internet.
 
 import { api } from './api.js';
 import { icon } from './ui.js';
 import { h } from './util.js';
 
-const STARTERS = ["What's running low?", 'What should I reorder?', 'Which products are not selling?', 'How are sales today?'];
+const STARTERS = ['Summary of the shop', "What's running low?", 'What should I reorder?', 'Which products are not selling?', 'How are sales today?', 'Who owes us money?', 'What can you do?'];
 
 let root = null;
 let greeted = false; // survives closing the panel, not a page reload
@@ -13,7 +13,7 @@ let greeted = false; // survives closing the panel, not a page reload
 export function mountAssistant() {
   if (root) return;
   const log = h('div', { class: 'chat-log' });
-  const input = h('input', { class: 'chat-input', type: 'text', placeholder: 'Ask about stock, sales, what to reorder...', maxlength: '500', autocomplete: 'off' });
+  const input = h('input', { class: 'chat-input', type: 'text', placeholder: 'Ask about stock, sales, customers, how to...', maxlength: '500', autocomplete: 'off' });
   const send = h('button', { class: 'chat-send', type: 'button', title: 'Send' }, icon('send'));
   const panel = h('div', { class: 'chat-panel', hidden: true },
     h('div', { class: 'chat-head' }, icon('support_agent'), h('span', {}, 'Shop assistant'),
@@ -49,6 +49,11 @@ export function mountAssistant() {
       parts.push(h('div', { class: 'chat-table' }, h('table', { class: 'data' },
         h('thead', {}, h('tr', {}, ...answer.table.columns.map((c) => h('th', {}, c)))),
         h('tbody', {}, ...answer.table.rows.map((r) => h('tr', {}, ...r.map((c) => h('td', {}, c))))))));
+    }
+    if (answer.ai) {
+      parts.push(h('details', { class: 'chat-note' },
+        h('summary', {}, 'Machine-made answer - please double-check'),
+        h('code', {}, answer.sql || '')));
     }
     if (answer.suggestions?.length) {
       parts.push(h('div', { class: 'chat-sugg' }, ...answer.suggestions.map((s) => h('button', { type: 'button', onclick: () => ask(s) }, s))));

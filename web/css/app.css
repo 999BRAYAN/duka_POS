@@ -541,6 +541,9 @@ table.data tr.no-top-first td { border-top: 0; }
 .chat-table table { font-size: 12px; width: 100%; }
 .chat-sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .chat-sugg button { border: 1px solid var(--outline); background: var(--surface); color: var(--ink-2); border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.chat-note { margin-top: 8px; font-size: 11px; color: var(--ink-2); }
+.chat-note summary { cursor: pointer; }
+.chat-note code { display: block; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
 .chat-bar { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
 .chat-input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--outline); border-radius: 20px; background: var(--field-fill); color: var(--ink); font: inherit; }
 .chat-input:focus { outline: 2px solid var(--focus); }
