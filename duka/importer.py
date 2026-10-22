@@ -170,7 +170,12 @@ def _find_header(rows: list[list], spec) -> tuple[int, dict, list[str]] | None:
 def parse(kind: str, filename: str, data: bytes) -> tuple[list[tuple[int, dict]], list[str]]:
     """[(spreadsheet row number, {key: raw value})] and the headings that were ignored."""
     spec = _spec(kind)
-    for _sheet, grid in _read_grid(filename, data):
+    sheets = _read_grid(filename, data)
+    # A workbook can hold one sheet per kind (Products, Customers...). When a
+    # sheet is named for this kind, only those are read, so a Customers upload
+    # never picks up the Products sheet just because both have a Name column.
+    named = [s for s in sheets if _norm(s[0]).startswith(kind[:-1])]
+    for _sheet, grid in (named or sheets):
         located = _find_header(grid, spec)
         if located is None:
             continue
