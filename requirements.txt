@@ -3,3 +3,4 @@ PyMySQL>=1.1
 cryptography>=42       # PyMySQL needs it for MySQL 8's default (caching_sha2_password) login
 reportlab>=4.0
 waitress>=3.0          # production server; run.py falls back to Flask's if it's missing
+openpyxl>=3.1         # reads and writes the Excel sheets used by bulk import

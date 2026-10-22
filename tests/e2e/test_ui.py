@@ -492,3 +492,31 @@ def test_dark_theme_and_narrow_window(browser, server):
     problems = list(ui.problems)
     ui.close()
     assert not problems, problems
+
+
+# --- import ----------------------------------------------------------------------------------------------------------
+
+def test_import_a_sheet_previews_then_populates(manager_ui, tmp_path):
+    from openpyxl import Workbook
+
+    ui = manager_ui
+    book = Workbook()
+    ws = book.active
+    ws.append(["Product", "Code", "Category", "Buying Price", "Price", "Qty"])
+    ws.append(["Gate valve", "GV1", "Valves", 300, 450, 12])
+    ws.append(["Bad row", "BR1", None, "abc", 5, 1])
+    sheet = tmp_path / "stock.xlsx"
+    book.save(sheet)
+
+    ui.goto("/import")
+    with ui.page.expect_file_chooser() as chooser:
+        ui.btn("Choose Excel / CSV file").click()
+    chooser.value.set_files(str(sheet))
+    expect(ui.page.get_by_text("nothing has been saved yet")).to_be_visible()
+    expect(ui.page.get_by_text("isn't a number")).to_be_visible()
+    assert ui.get("/api/products")["products"] == []          # a preview saves nothing
+
+    ui.btn("Import 1 row (skip 1)", exact=False).click()
+    expect(ui.page.get_by_text("Import finished")).to_be_visible()
+    products = ui.get("/api/products")["products"]
+    assert [(p["name"], p["stock"]) for p in products] == [("Gate valve", 12)]

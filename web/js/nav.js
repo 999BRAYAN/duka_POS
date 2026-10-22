@@ -21,6 +21,7 @@ const GROUPS = [
     ['adjust', 'Stock adjustments', 'tune', false, 'adjustStock', '/adjust'],
     ['purchases', 'Receive stock', 'local_shipping', true, 'receiveStock', '/purchases'],
     ['suppliers', 'Suppliers', 'store', true, 'manageProducts', '/suppliers'],
+    ['import', 'Import from Excel', 'upload_file', true, 'manageProducts', '/import'],
   ]],
   ['People', [
     ['customers', 'Customers', 'people_outline', false, null, '/customers'],

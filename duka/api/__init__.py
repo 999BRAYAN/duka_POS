@@ -71,4 +71,4 @@ def _domain_error(error: DomainError):
 
 
 # Imported for their side effect of registering routes.
-from . import auth, catalog, money, people, sales, stock  # noqa: E402,F401
+from . import auth, catalog, imports, money, people, sales, stock  # noqa: E402,F401
