@@ -427,3 +427,20 @@ def test_a_question_the_fixed_answers_cannot_express_goes_to_the_model_first(man
 def test_with_no_model_those_questions_still_get_the_nearest_fixed_answer(manager, monkeypatch):
     monkeypatch.setattr(llm, "available", lambda: False)
     assert "customer" in ask(manager, "how many customers have a phone number starting with 07")["reply"].lower()
+
+
+def test_how_many_questions_count_the_right_thing(manager, monkeypatch):
+    monkeypatch.setattr(llm, "available", lambda: False)
+    manager.post("/api/suppliers", json={"name": "Acme Wholesale", "phone": "0711000000"})
+    manager.post("/api/suppliers", json={"name": "Bidco Traders"})
+    a = ask(manager, "how many suppliers are in the system")
+    assert a["reply"].startswith("You have 2 suppliers")          # not "suppliers owed"
+    assert ask(manager, "list all suppliers")["reply"] == "2 suppliers:"
+    assert ask(manager, "how many sales have we made")["reply"] == "0 completed sales in all."
+    assert ask(manager, "how many voided sales")["reply"] == "0 voided sales in all."
+    assert ask(manager, "how many staff accounts")["reply"] == "1 active staff login."
+
+
+def test_a_cashier_cannot_count_suppliers(cashier, monkeypatch):
+    monkeypatch.setattr(llm, "available", lambda: False)
+    assert "Only a manager" in ask(cashier, "how many suppliers do we have")["reply"]

@@ -22,7 +22,7 @@ Dashboard and Reports.
 import os
 import re
 
-from . import freeform, howto, llm, money as money_a, people, stock as stock_a
+from . import counts, freeform, howto, llm, money as money_a, people, stock as stock_a
 from .common import Ctx, answer, find_named, has, qty, read_two_periods
 from .. import dates
 from ..db import Db
@@ -109,6 +109,11 @@ def ask(db: Db, user: dict, question: str) -> dict:
         if found:
             return found
 
+    if counts.asks_count(q):
+        found = counts.how_many(c)
+        if found:
+            return found
+
     # Which product / customer / supplier / category does the question name?
     customer_words = has(q, r"\b(owe|owes|owed|balance|credit|statement|paid|pays|payment|customer|debt|bought|buys|spent|phone|limit)\b")
     supplier_words = has(q, r"\b(supplier|suppliers|supplied|supplies|vendor|wholesaler|distributor|purchases?|bought from)\b")
@@ -172,6 +177,10 @@ def ask(db: Db, user: dict, question: str) -> dict:
         return people.unpaid_purchases(c)
     if has(q, r"\b(pending|waiting|not yet received|incoming|on order|expected)\b.*\b(purchases?|orders?|stock|deliver\w*)\b"):
         return people.pending_purchases(c)
+    if has(q, r"\b(how many|number of|count of|total) suppliers?\b", r"\bsuppliers? count\b"):
+        return people.supplier_count(c)
+    if has(q, r"\b(list|show|all|name|names)\b.{0,20}\bsuppliers?\b", r"\bwho (are )?(my |our |the )?suppliers\b"):
+        return people.supplier_list(c)
     if has(q, r"\b(supplier|suppliers)\b.*\b(owe|owed|balance|payable)\b", r"\b(owe|owed)\b.*\bsuppliers?\b", r"\bwhat (do|did) (i|we) owe\b", r"\b(i|we) owe\b", r"\bpayables?\b"):
         return people.owed_to_suppliers(c)
     if has(q, r"\bsuppliers?\b") and not has(q, r"\bpurchases?\b"):

@@ -101,6 +101,24 @@ def supplier_info(c: Ctx, s: dict) -> dict:
     return answer(text, table(["Bought from them", "Quantity", "Spent"], [[r["name"], qty(r["q"]), money(r["total"])] for r in items]) if items else None)
 
 
+def supplier_count(c: Ctx) -> dict:
+    if not c.manager:
+        return manager_only("supplier details")
+    n = len(c.suppliers)
+    owed = sum(1 for s in c.suppliers if s["balance"] > 0)
+    return answer(f"You have {n} supplier{'s' if n != 1 else ''}; you owe money to {owed} of them.", suggestions=["Show all suppliers", "What do I owe suppliers?"])
+
+
+def supplier_list(c: Ctx) -> dict:
+    if not c.manager:
+        return manager_only("supplier details")
+    rows = c.db.all("SELECT name, phone, balance FROM suppliers ORDER BY name LIMIT 100")
+    if not rows:
+        return answer("You have no suppliers yet.")
+    return answer(f"{len(rows)} supplier{'s' if len(rows) != 1 else ''}:",
+                  table(["Supplier", "Phone", "You owe"], [[r["name"], r["phone"] or "-", money(r["balance"])] for r in rows]))
+
+
 def unpaid_purchases(c: Ctx) -> dict:
     if not c.manager:
         return manager_only("purchases")
