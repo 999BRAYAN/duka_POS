@@ -32,6 +32,15 @@ def _init_when_mysql_is_up(wait: float = 30.0) -> None:
             time.sleep(0.5)
 
 
+def _address() -> str:
+    """http://campusbites if setup-name.bat has been run, else the plain address."""
+    try:
+        with socket.create_connection(("campusbites", 80), timeout=0.5):
+            return "http://campusbites"
+    except OSError:
+        return f"http://127.0.0.1:{settings.port}"
+
+
 def _open_browser_when_ready() -> None:
     """Open the page as soon as the server accepts connections, not before."""
     for _ in range(100):
@@ -40,7 +49,7 @@ def _open_browser_when_ready() -> None:
                 break
         except OSError:
             time.sleep(0.1)
-    webbrowser.open(f"http://127.0.0.1:{settings.port}")
+    webbrowser.open(_address())
 
 
 def main() -> None:
