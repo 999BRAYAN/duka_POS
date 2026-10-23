@@ -81,6 +81,13 @@ def _product_question(c: Ctx, p: dict) -> dict:
     return stock_a.stock_of(p)
 
 
+_NEEDS_QUERY = (r"\b(per|each|every|never|ever|starting|starts?|ending|ends?|contains?|containing|without|except)\b",
+                r"\b(more|less|fewer|greater|higher|lower) than\b", r"\bat (least|most)\b", r"\bbetween\b",
+                r"\b(average|avg|median|ratio|percent|percentage)\b", r"\b(group|grouped|sorted|ordered) by\b",
+                r"categor.{0,30}(most|least|best|worst|sold|earn|revenue|profit)",
+                r"\b(which|what|how many) .{0,40}\b(that|who|with)\b")
+
+
 def ask(db: Db, user: dict, question: str) -> dict:
     question = (question or "").strip()
     if not question:
@@ -109,6 +116,14 @@ def ask(db: Db, user: dict, question: str) -> dict:
     product = (find_named(question, products) or [None])[0]
     cust = find_named(question, customers, min_score=0.5)
     sup = find_named(question, suppliers, min_score=0.5)
+
+    # A question the fixed answers can't express ("per cashier", "never sold",
+    # "starting with") would only get a loosely related answer from them, so
+    # a manager's goes to the local model first when one is running.
+    if not (product or cust or sup) and c.manager and has(q, *_NEEDS_QUERY):
+        found = freeform.try_answer(c)
+        if found:
+            return found
 
     if cust and customer_words:
         return people.customer_info(c, cust[0]) if len(cust) == 1 else people.pick_one("customer", cust)

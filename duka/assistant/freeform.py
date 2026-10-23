@@ -48,6 +48,12 @@ Q: how many units of sugar did we sell last week?
 SELECT SUM(si.quantity) AS units FROM sale_items si JOIN sales s ON s.id = si.sale_id JOIN products p ON p.id = si.product_id WHERE s.status = 'completed' AND p.name LIKE '%sugar%' AND s.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
 Q: which customers have not bought anything in 30 days?
 SELECT c.name, MAX(s.created_at) AS last_purchase FROM customers c LEFT JOIN sales s ON s.customer_id = c.id AND s.status = 'completed' WHERE c.is_walk_in = 0 GROUP BY c.id, c.name HAVING last_purchase IS NULL OR last_purchase < DATE_SUB(NOW(), INTERVAL 30 DAY) ORDER BY last_purchase LIMIT 50
+Q: which products have never sold? (the 5 dearest)
+SELECT p.name, p.selling_price FROM products p WHERE p.is_active = 1 AND NOT EXISTS (SELECT 1 FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE si.product_id = p.id AND s.status = 'completed') ORDER BY p.selling_price DESC LIMIT 5
+Q: how many customers have a phone number starting with 07?
+SELECT COUNT(*) AS customers FROM customers WHERE is_walk_in = 0 AND phone LIKE '07%'
+Q: what is the average sale per weekday?
+SELECT DAYNAME(created_at) AS weekday, AVG(total) AS average_sale, COUNT(*) AS sales FROM sales WHERE status = 'completed' GROUP BY DAYOFWEEK(created_at), DAYNAME(created_at) ORDER BY DAYOFWEEK(created_at)
 """
 
 _FORBIDDEN = re.compile(
@@ -125,12 +131,17 @@ def _cell(v) -> str:
 def _generate(question: str, today: str, problem: str | None = None, previous: str | None = None) -> str:
     system = (
         "You write one MySQL SELECT query that answers a shopkeeper's question from this database. "
-        "Reply with ONLY the SQL, nothing else. If the question cannot be answered from this data, reply NO_QUERY.\n"
+        "Reply with ONLY the SQL, nothing else. Always try: pick the closest tables and columns. "
+        "Reply NO_QUERY only if the question has nothing to do with a shop's records.\n"
         "Rules: read-only; one statement; completed sales only (sales.status = 'completed') unless asked about voids; "
         f"keep results small (LIMIT 50 or less); today is {today}; use CURDATE()/NOW() for relative dates; "
-        "name columns clearly with AS.\n\nTables:\n" + SCHEMA + "\nExamples:\n" + EXAMPLES
+        "name columns clearly with AS.\n\nTables:\n" + SCHEMA
     )
-    messages = [{"role": "system", "content": system}, {"role": "user", "content": question}]
+    messages = [{"role": "system", "content": system}]
+    for block in EXAMPLES.split("Q: ")[1:]:      # worked examples go in as earlier turns
+        ask, _, sql = block.partition("\n")
+        messages += [{"role": "user", "content": ask.strip()}, {"role": "assistant", "content": sql.strip()}]
+    messages.append({"role": "user", "content": question})
     if problem and previous:
         messages += [{"role": "assistant", "content": previous},
                      {"role": "user", "content": f"That failed: {problem}. Write a corrected query. Reply with only the SQL."}]

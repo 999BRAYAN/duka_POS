@@ -414,3 +414,16 @@ def test_phrasings_that_used_to_miss(manager):
     assert "doesn't record expiry" in ask(manager, "anything expiring soon")["reply"]
     # a first sale made minutes ago is still a sale, not "no sales yet"
     assert "no completed sales" not in ask(manager, "what is selling best")["reply"]
+
+
+def test_a_question_the_fixed_answers_cannot_express_goes_to_the_model_first(manager, model):
+    """"how many ... starting with" mentions customers, but the customer count would be the wrong answer."""
+    make_product(manager, "Soda", cost=40, price=100, stock=7)
+    model("SELECT COUNT(*) AS n FROM customers WHERE phone LIKE '07%'", "Nobody has one yet.")
+    a = ask(manager, "how many customers have a phone number starting with 07")
+    assert a.get("ai") is True and a["reply"] == "Nobody has one yet."
+
+
+def test_with_no_model_those_questions_still_get_the_nearest_fixed_answer(manager, monkeypatch):
+    monkeypatch.setattr(llm, "available", lambda: False)
+    assert "customer" in ask(manager, "how many customers have a phone number starting with 07")["reply"].lower()
