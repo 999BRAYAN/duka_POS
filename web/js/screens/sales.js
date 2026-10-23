@@ -390,10 +390,14 @@ export async function checkoutScreen() {
       const refreshWarning = () => {
         const c = selectedCustomer();
         const d = balanceDue();
-        warning.classList.toggle('hidden', !(c && d > 0));
+        warning.classList.toggle('hidden', !c);
         if (c && d > 0) {
           warning.textContent =
             `Remaining ${amount(d)} goes on ${c.name}'s account — now ${amount(c.currentBalance)} of ${amount(c.creditLimit)}.`;
+        } else if (c) {
+          // Picking a customer alone is not a credit sale: say so, so it isn't a surprise afterwards.
+          warning.textContent =
+            `Paid in full now, so nothing goes on ${c.name}'s account. To sell on credit, choose Credit as the payment method (or lower the amount paid).`;
         }
       };
       refreshWarning();

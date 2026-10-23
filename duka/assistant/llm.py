@@ -77,11 +77,11 @@ def available() -> bool:
     return model() is not None
 
 
-def chat(messages: list[dict], *, timeout: float | None = None) -> str:
+def chat(messages: list[dict], *, timeout: float | None = None, max_tokens: int | None = None) -> str:
     """One reply from the model; raises if Ollama isn't reachable."""
     body = json.dumps({
         "model": model(), "stream": False, "messages": messages,
-        "options": {"temperature": 0}, "keep_alive": _keep_alive(),
+        "options": {"temperature": 0, **({"num_predict": max_tokens} if max_tokens else {})}, "keep_alive": _keep_alive(),
     }).encode()
     req = urllib.request.Request(f"{_url()}/api/chat", body, {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout or _timeout()) as r:

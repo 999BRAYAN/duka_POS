@@ -20,6 +20,7 @@ ALLOWED_TABLES = {
     "products", "categories", "customers", "suppliers", "sales", "sale_items", "purchases",
     "purchase_items", "stock_movements", "credit_transactions", "expenses", "users",
 }
+_SQL_CACHE: dict[str, str] = {}      # question -> the query that answered it last time
 MAX_ROWS = 200
 SHOWN_ROWS = 25
 
@@ -146,7 +147,7 @@ def _generate(question: str, today: str, problem: str | None = None, previous: s
     if problem and previous:
         messages += [{"role": "assistant", "content": previous},
                      {"role": "user", "content": f"That failed: {problem}. Write a corrected query. Reply with only the SQL."}]
-    return llm.chat(messages)
+    return llm.chat(messages, max_tokens=220)
 
 
 def _describe(cols: list[str], rows: list[dict]) -> str:
@@ -166,6 +167,20 @@ def _explain(question: str, cols: list[str], rows: list[dict]) -> str:
     return reply or f"I found {len(rows)} result{'s' if len(rows) != 1 else ''}."
 
 
+def _result(c: Ctx, cols: list[str], rows: list[dict], sql: str) -> dict:
+    if not rows:
+        reply = "I looked, and found nothing matching that."
+    else:
+        # A small model retelling the rows can get them wrong, so by default the
+        # reply is plain and the table carries the detail (DUKA_OLLAMA_EXPLAIN=1
+        # asks the model to put it in words, at the cost of a second, slower call).
+        reply = _explain(c.text, cols, rows) if os.environ.get("DUKA_OLLAMA_EXPLAIN") == "1" else _describe(cols, rows)
+    tbl = table(cols, [[_cell(r[col]) for col in cols] for r in rows[:SHOWN_ROWS]]) if rows and len(cols) > 0 and not (len(rows) == 1 and len(cols) == 1) else None
+    out = answer(reply, tbl)
+    out.update(ai=True, sql=sql)
+    return out
+
+
 def try_answer(c: Ctx) -> dict | None:
     """An answer from the model, or None when it can't help (not a manager, no
     model running, or it never produced a usable query)."""
@@ -173,6 +188,14 @@ def try_answer(c: Ctx) -> dict | None:
         return None
     try:
         today = dates.fmt_date(c.now)
+        key = " ".join(c.q.split())
+        cached = _SQL_CACHE.get(key)
+        if cached:                   # asked before: skip the slow part (writing the query), but run it fresh
+            try:
+                cols, rows = run_readonly(check_sql(cached))
+                return _result(c, cols, rows, check_sql(cached))
+            except Exception:
+                _SQL_CACHE.pop(key, None)
         raw = _generate(c.text, today)
         sql, error = "", None
         for attempt in range(2):
@@ -190,16 +213,9 @@ def try_answer(c: Ctx) -> dict | None:
                     raw = _generate(c.text, today, error, candidate)
         if error is not None:
             return None
-        if not rows:
-            reply = "I looked, and found nothing matching that."
-        else:
-            # A small model retelling the rows can get them wrong, so by default the
-            # reply is plain and the table carries the detail (DUKA_OLLAMA_EXPLAIN=1
-            # asks the model to put it in words, at the cost of a second, slower call).
-            reply = _explain(c.text, cols, rows) if os.environ.get("DUKA_OLLAMA_EXPLAIN") == "1" else _describe(cols, rows)
-        tbl = table(cols, [[_cell(r[col]) for col in cols] for r in rows[:SHOWN_ROWS]]) if rows and len(cols) > 0 and not (len(rows) == 1 and len(cols) == 1) else None
-        out = answer(reply, tbl)
-        out.update(ai=True, sql=sql)
-        return out
+        _SQL_CACHE[key] = sql
+        if len(_SQL_CACHE) > 200:
+            _SQL_CACHE.pop(next(iter(_SQL_CACHE)))
+        return _result(c, cols, rows, sql)
     except Exception:
         return None

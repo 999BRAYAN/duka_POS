@@ -335,6 +335,8 @@ class FakeModel:
 
 @pytest.fixture()
 def model(monkeypatch):
+    freeform._SQL_CACHE.clear()
+
     def install(*replies):
         fake = FakeModel(*replies)
         monkeypatch.setattr(llm, "available", lambda: True)
@@ -455,3 +457,13 @@ def test_model_first_mode_sends_open_questions_to_the_model_but_keeps_the_staple
     fake = model()
     assert "ai" not in ask(manager, "what is running low?") and not fake.calls     # staples stay instant
     assert "ai" not in ask(manager, "profit this week") and not fake.calls
+
+
+def test_a_repeated_question_skips_the_model_but_still_reads_fresh_data(manager, model):
+    make_product(manager, "Soda", cost=40, price=100, stock=7)
+    fake = model("SELECT name, stock FROM products WHERE stock < 50")
+    assert rows_of(ask(manager, "which goods have fewer than fifty units"))[0] == ["Soda", "7"]
+    fake = model()                                   # the second time the model is not asked at all
+    make_product(manager, "Candle", cost=30, price=40, stock=3)
+    again = ask(manager, "Which goods  have fewer than fifty units")
+    assert not fake.calls and {r[0] for r in rows_of(again)} == {"Soda", "Candle"} and again["ai"] is True
