@@ -13,6 +13,7 @@ import time
 import webbrowser
 
 from duka import create_app
+from duka.assistant import llm
 from duka.config import settings
 from init_db import init_database
 
@@ -54,6 +55,7 @@ def _open_browser_when_ready() -> None:
 
 def main() -> None:
     _init_when_mysql_is_up()
+    threading.Thread(target=llm.warm_up, daemon=True).start()   # keep the model ready for the chatbot
     if os.environ.get("DUKA_OPEN_BROWSER") == "1":
         threading.Thread(target=_open_browser_when_ready, daemon=True).start()
     try:

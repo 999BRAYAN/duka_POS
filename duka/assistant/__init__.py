@@ -88,6 +88,18 @@ _NEEDS_QUERY = (r"\b(per|each|every|never|ever|starting|starts?|ending|ends?|con
                 r"\b(which|what|how many) .{0,40}\b(that|who|with)\b")
 
 
+# Everyday questions the fixed answers handle exactly and instantly; in "model
+# first" mode (DUKA_OLLAMA_FIRST=1) these still skip the model.
+_STAPLES = (r"\b(low|running low|reorder|out of stock|restock)\b",
+            r"\b(sales|takings|revenue|profit|expenses?|spent)\b.{0,25}\b(today|yesterday|this|last|week|month|year)\b",
+            r"\bwho owes\b", r"\bowes? (me|us)\b", r"\b(best|top) (sellers?|selling)\b",
+            r"\b(summary|briefing|overview)\b", r"\bstock health\b|\bdead stock\b|\bslow(-| )?mov")
+
+
+def _model_first(c: Ctx) -> bool:
+    return os.environ.get("DUKA_OLLAMA_FIRST") == "1" and not has(c.q, *_STAPLES)
+
+
 def ask(db: Db, user: dict, question: str) -> dict:
     question = (question or "").strip()
     if not question:
@@ -125,7 +137,7 @@ def ask(db: Db, user: dict, question: str) -> dict:
     # A question the fixed answers can't express ("per cashier", "never sold",
     # "starting with") would only get a loosely related answer from them, so
     # a manager's goes to the local model first when one is running.
-    if not (product or cust or sup) and c.manager and has(q, *_NEEDS_QUERY):
+    if not (product or cust or sup) and c.manager and (has(q, *_NEEDS_QUERY) or _model_first(c)):
         found = freeform.try_answer(c)
         if found:
             return found

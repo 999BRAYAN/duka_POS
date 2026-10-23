@@ -444,3 +444,14 @@ def test_how_many_questions_count_the_right_thing(manager, monkeypatch):
 def test_a_cashier_cannot_count_suppliers(cashier, monkeypatch):
     monkeypatch.setattr(llm, "available", lambda: False)
     assert "Only a manager" in ask(cashier, "how many suppliers do we have")["reply"]
+
+
+def test_model_first_mode_sends_open_questions_to_the_model_but_keeps_the_staples(manager, model, monkeypatch):
+    monkeypatch.setenv("DUKA_OLLAMA_FIRST", "1")
+    make_product(manager, "Soda", cost=40, price=100, stock=7)
+    fake = model("SELECT COUNT(*) AS suppliers_total FROM suppliers")
+    a = ask(manager, "give me the supplier situation")
+    assert a.get("ai") is True and len(fake.calls) == 1
+    fake = model()
+    assert "ai" not in ask(manager, "what is running low?") and not fake.calls     # staples stay instant
+    assert "ai" not in ask(manager, "profit this week") and not fake.calls

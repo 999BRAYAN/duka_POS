@@ -54,6 +54,25 @@ def model() -> str | None:
     return found
 
 
+def _keep_alive() -> str:
+    """How long Ollama keeps the model in memory after a question (it unloads
+    after 5 minutes by default, which makes the next question slow)."""
+    return os.environ.get("DUKA_OLLAMA_KEEP_ALIVE", "24h")
+
+
+def warm_up() -> None:
+    """Load the model now, so the first question doesn't wait for it. Quiet
+    when Ollama isn't there."""
+    try:
+        name = model()
+        if name:
+            body = json.dumps({"model": name, "keep_alive": _keep_alive()}).encode()
+            req = urllib.request.Request(f"{_url()}/api/generate", body, {"Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=300).read()
+    except Exception:
+        pass
+
+
 def available() -> bool:
     return model() is not None
 
@@ -62,7 +81,7 @@ def chat(messages: list[dict], *, timeout: float | None = None) -> str:
     """One reply from the model; raises if Ollama isn't reachable."""
     body = json.dumps({
         "model": model(), "stream": False, "messages": messages,
-        "options": {"temperature": 0},
+        "options": {"temperature": 0}, "keep_alive": _keep_alive(),
     }).encode()
     req = urllib.request.Request(f"{_url()}/api/chat", body, {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout or _timeout()) as r:

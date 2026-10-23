@@ -14,6 +14,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 os.environ.setdefault("DUKA_DB_NAME", "duka_pos_test")
+os.environ["DUKA_OLLAMA_URL"] = "http://127.0.0.1:1"      # tests never talk to a real model
+os.environ["DUKA_OLLAMA_FIRST"] = "0"
 
 from duka import create_app  # noqa: E402
 from duka.db import Db, connect  # noqa: E402
