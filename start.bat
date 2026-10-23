@@ -1,7 +1,16 @@
 @echo off
-rem One-click launcher: starts duka_pos and opens it in the browser.
-rem MySQL must be running first (start it from the XAMPP control panel).
+rem One-click launcher: starts MySQL if it isn't running, starts duka_pos, and
+rem opens the browser the moment the server is ready.
 cd /d "%~dp0"
-start "" "http://127.0.0.1:8080"
+
+netstat -ano | findstr /r /c:":3306 .*LISTENING" >nul
+if errorlevel 1 (
+  if exist "C:\xampp\mysql\bin\mysqld.exe" (
+    echo Starting MySQL...
+    powershell -NoProfile -Command "Start-Process -WindowStyle Hidden 'C:\xampp\mysql\bin\mysqld.exe' '--defaults-file=C:\xampp\mysql\bin\my.ini --standalone'"
+  )
+)
+
+set DUKA_OPEN_BROWSER=1
 py run.py
-pause
+if errorlevel 1 pause
