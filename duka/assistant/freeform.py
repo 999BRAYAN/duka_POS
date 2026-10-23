@@ -8,6 +8,7 @@ row cap, so even a query that slipped past the checks could not change data.
 Answers from here are marked as machine-made so they are double-checked.
 """
 
+import os
 import re
 
 from .. import dates
@@ -148,6 +149,13 @@ def _generate(question: str, today: str, problem: str | None = None, previous: s
     return llm.chat(messages)
 
 
+def _describe(cols: list[str], rows: list[dict]) -> str:
+    if len(rows) == 1 and len(cols) == 1:
+        return f"{cols[0].replace('_', ' ').capitalize()}: {_cell(rows[0][cols[0]])}."
+    more = f" Showing the first {SHOWN_ROWS}." if len(rows) > SHOWN_ROWS else ""
+    return f"Found {len(rows)} result{'s' if len(rows) != 1 else ''}.{more}"
+
+
 def _explain(question: str, cols: list[str], rows: list[dict]) -> str:
     shown = [{c: _cell(r[c]) for c in cols} for r in rows[:30]]
     reply = llm.chat([
@@ -185,7 +193,10 @@ def try_answer(c: Ctx) -> dict | None:
         if not rows:
             reply = "I looked, and found nothing matching that."
         else:
-            reply = _explain(c.text, cols, rows)
+            # A small model retelling the rows can get them wrong, so by default the
+            # reply is plain and the table carries the detail (DUKA_OLLAMA_EXPLAIN=1
+            # asks the model to put it in words, at the cost of a second, slower call).
+            reply = _explain(c.text, cols, rows) if os.environ.get("DUKA_OLLAMA_EXPLAIN") == "1" else _describe(cols, rows)
         tbl = table(cols, [[_cell(r[col]) for col in cols] for r in rows[:SHOWN_ROWS]]) if rows and len(cols) > 0 and not (len(rows) == 1 and len(cols) == 1) else None
         out = answer(reply, tbl)
         out.update(ai=True, sql=sql)

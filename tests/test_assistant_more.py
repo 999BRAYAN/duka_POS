@@ -346,19 +346,19 @@ def model(monkeypatch):
 def test_unknown_question_is_answered_by_the_model_through_a_checked_query(manager, model):
     make_product(manager, "Soda", cost=40, price=100, stock=7)
     make_product(manager, "Candle", cost=30, price=40, stock=3)
-    fake = model("```sql\nSELECT name, stock FROM products WHERE stock < 5\n```", "Only Candle has fewer than 5 units left (3).")
+    fake = model("```sql\nSELECT name, stock FROM products WHERE stock < 5\n```")
     a = ask(manager, "which goods have fewer than five units")
-    assert a["reply"].startswith("Only Candle") and a["ai"] is True
+    assert a["reply"] == "Found 1 result." and a["ai"] is True
     assert "LIMIT" in a["sql"] and rows_of(a) == [["Candle", "3"]]
     assert "products(" in fake.calls[0][0]["content"]       # the model is shown the schema
-    assert "Candle" in fake.calls[1][1]["content"]          # and, afterwards, only the result rows
+    assert len(fake.calls) == 1                             # one model call; the reply is built from the rows, not retold
 
 
 def test_a_bad_query_is_retried_once_then_given_up(manager, model):
     make_product(manager, "Soda", cost=40, price=100, stock=7)
-    fake = model("SELECT nothing FROM products", "SELECT name FROM products", "There is one product: Soda.")
+    fake = model("SELECT nothing FROM products", "SELECT name FROM products")
     a = ask(manager, "something unusual about the goods list")
-    assert a["ai"] and "Soda" in a["reply"] and "failed" in fake.calls[1][-1]["content"]
+    assert a["ai"] and a["reply"] == "Name: Soda." and "failed" in fake.calls[1][-1]["content"]
 
     fake = model("DELETE FROM products", "DROP TABLE products")
     a = ask(manager, "please wipe everything about the goods list")
@@ -419,9 +419,9 @@ def test_phrasings_that_used_to_miss(manager):
 def test_a_question_the_fixed_answers_cannot_express_goes_to_the_model_first(manager, model):
     """"how many ... starting with" mentions customers, but the customer count would be the wrong answer."""
     make_product(manager, "Soda", cost=40, price=100, stock=7)
-    model("SELECT COUNT(*) AS n FROM customers WHERE phone LIKE '07%'", "Nobody has one yet.")
+    model("SELECT COUNT(*) AS n FROM customers WHERE phone LIKE '07%'")
     a = ask(manager, "how many customers have a phone number starting with 07")
-    assert a.get("ai") is True and a["reply"] == "Nobody has one yet."
+    assert a.get("ai") is True and a["reply"] == "N: 0."
 
 
 def test_with_no_model_those_questions_still_get_the_nearest_fixed_answer(manager, monkeypatch):
